@@ -3,15 +3,14 @@ package com.github.oskin1.wallet
 import java.nio.charset.Charset
 
 import cats.data.NonEmptyList
+import cats.implicits._
+import com.github.oskin1.wallet.models.storage.Wallet
 import com.google.common.base.Charsets
 import com.google.common.primitives.{Bytes, Ints, Longs}
-import org.ergoplatform.wallet.secrets
 import io.circe.generic.auto._
 import io.circe.parser._
 import io.circe.syntax._
-import cats.implicits._
-import com.github.oskin1.wallet.models.storage
-import com.github.oskin1.wallet.models.storage.Wallet
+import org.ergoplatform.wallet.secrets
 import org.ergoplatform.wallet.secrets.EncryptedSecret
 
 import scala.util.Try
@@ -82,11 +81,11 @@ package object serialization {
       len = rem.length / addressesNum
       addresses <- rem.grouped(len).toList.map(_.as[RawAddress]).sequence
       nonEmptyAddresses <- NonEmptyList
-                            .fromList(addresses)
-                            .fold[Either[Throwable, NonEmptyList[RawAddress]]](
-                              Left(new Exception("Empty addresses list"))
-                            )(Right(_))
-    } yield storage.Wallet(secret, nonEmptyAddresses)
+                             .fromList(addresses)
+                             .fold[Either[Throwable, NonEmptyList[RawAddress]]](
+                               Left(new Exception("Empty addresses list"))
+                             )(Right(_))
+    } yield Wallet(secret, nonEmptyAddresses)
   }
 
   private def charset: Charset = Charsets.UTF_8
