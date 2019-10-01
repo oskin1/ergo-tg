@@ -2,18 +2,21 @@ package com.github.oskin1.wallet.services
 
 import canoe.models.ChatId
 import cats.MonadError
+import cats.data.NonEmptyList
 import cats.effect.Sync
 import cats.implicits._
+import com.github.oskin1.wallet.models.network.Balance
+import com.github.oskin1.wallet.models.storage.Wallet
 import com.github.oskin1.wallet.models.{
+  storage,
   NewWallet,
   RestoredWallet,
   TransactionRequest
 }
-import com.github.oskin1.wallet.repos.SecretRepo
+import com.github.oskin1.wallet.repos.WalletRepo
 import com.github.oskin1.wallet.{encryption, Settings}
 import org.ergoplatform.wallet.mnemonic.Mnemonic
 import org.ergoplatform.wallet.secrets.{
-  EncryptedSecret,
   ExtendedSecretKey,
   ExtendedSecretKeySerializer
 }
@@ -43,14 +46,14 @@ trait WalletService[F[_]] {
     fee: Long
   ): F[String]
 
-  def checkBalance(chatId: ChatId.Chat): F[Long]
+  def getBalance(chatId: ChatId.Chat): F[Balance]
 }
 
 object WalletService {
 
   final class Live[F[_]: Sync](
     explorerService: ExplorerService[F],
-    secretRepo: SecretRepo[F],
+    secretRepo: WalletRepo[F],
     settings: Settings
   ) extends WalletService[F] {
 
@@ -63,10 +66,9 @@ object WalletService {
       pass: String,
       mnemonicPassOpt: Option[String],
     ): F[RestoredWallet] = {
-      val (encryptedSecret, rootAddress) =
-        deriveRootWallet(mnemonic, pass, mnemonicPassOpt)
-      secretRepo.putSecret(chatId, encryptedSecret) *> Sync[F].delay(
-        RestoredWallet(rootAddress.toString())
+      val wallet = deriveRootWallet(mnemonic, pass, mnemonicPassOpt)
+      secretRepo.putWallet(chatId, wallet) *> Sync[F].delay(
+        RestoredWallet(wallet.addresses.head)
       )
     }
 
@@ -80,10 +82,9 @@ object WalletService {
       new Mnemonic(settings.mnemonicPhraseLanguage, settings.seedStrengthBits)
         .toMnemonic(entropy)
         .map { mnemonic =>
-          val (encryptedSecret, rootAddress) =
-            deriveRootWallet(mnemonic, pass, mnemonicPassOpt)
-          secretRepo.putSecret(chatId, encryptedSecret) *> Sync[F].delay(
-            NewWallet(rootAddress.toString(), mnemonic)
+          val wallet = deriveRootWallet(mnemonic, pass, mnemonicPassOpt)
+          secretRepo.putWallet(chatId, wallet) *> Sync[F].delay(
+            NewWallet(wallet.addresses.head, mnemonic)
           )
         }
         .fold(e => MonadError[F, Throwable].raiseError(e), r => r)
@@ -96,13 +97,13 @@ object WalletService {
       fee: Long
     ): F[String] = ???
 
-    def checkBalance(chatId: ChatId.Chat): F[Long] = ???
+    def getBalance(chatId: ChatId.Chat): F[Balance] = ???
 
     private def deriveRootWallet(
       mnemonic: String,
       pass: String,
       mnemonicPassOpt: Option[String]
-    ): (EncryptedSecret, P2PKAddress) = {
+    ): Wallet = {
       val seed = Mnemonic.toSeed(mnemonic, mnemonicPassOpt)
       val secret = ExtendedSecretKey.deriveMasterKey(seed)
       val encryptedSecret =
@@ -110,7 +111,10 @@ object WalletService {
           settings.encryption
         )
       val rootAddress = P2PKAddress(secret.publicKey.key)
-      (encryptedSecret, rootAddress)
+      storage.Wallet(
+        encryptedSecret,
+        NonEmptyList(rootAddress.toString(), List.empty)
+      )
     }
 
   }

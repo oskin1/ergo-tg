@@ -34,7 +34,7 @@ abstract class Storage[F[_]: Monad](implicit F: MonadError[F, Throwable]) {
     vd: BytesDecoder[VT]
   ): F[Option[VT]] =
     get(ke(key))
-      .map(_.map(vd.apply))
+      .map(_.map(vd(_)))
       .flatMap {
         case Some(Right(value)) => F.pure(Some(value))
         case Some(Left(e))      => F.raiseError(e)

@@ -1,8 +1,8 @@
 package com.github.oskin1.wallet.services
 
 import cats.effect.Sync
-import com.github.oskin1.wallet.models.protocol.Transaction
-import com.github.oskin1.wallet.{ModifierId, Settings}
+import com.github.oskin1.wallet.models.network.{Balance, Transaction}
+import com.github.oskin1.wallet.{ModifierId, RawAddress, Settings}
 import org.http4s.circe.jsonOf
 import org.http4s.client.Client
 import org.http4s.{Method, Request, Uri}
@@ -11,9 +11,13 @@ import org.http4s.{Method, Request, Uri}
   */
 trait ExplorerService[F[_]] {
 
-  /** Gets transaction by its id from the network if it exists.
+  /** Gets a transaction by its id from the network if it exists.
     */
   def getTransaction(id: ModifierId): F[Option[Transaction]]
+
+  /** Gets balance of the given address from the network.
+    */
+  def getBalance(address: RawAddress): F[Balance]
 }
 
 object ExplorerService {
@@ -22,14 +26,16 @@ object ExplorerService {
     extends ExplorerService[F] {
 
     def getTransaction(id: ModifierId): F[Option[Transaction]] =
-      client.expectOption[Transaction](getTransactionRequest(id))(
-        jsonOf(Sync[F], Transaction.decoder)
-      )
+      client.expectOption[Transaction](
+        makeRequest(s"${settings.explorerUrl}/transactions/$id")
+      )(jsonOf(Sync[F], Transaction.decoder))
 
-    private def getTransactionUri(id: ModifierId) =
-      Uri.unsafeFromString(s"${settings.explorerUrl}/transactions/$id")
+    def getBalance(address: String): F[Balance] =
+      client.expect[Balance](
+        makeRequest(s"${settings.explorerUrl}/addresses/$address")
+      )(jsonOf(Sync[F], Balance.decoder))
 
-    private def getTransactionRequest(id: ModifierId) =
-      Request[F](Method.GET, getTransactionUri(id))
+    private def makeRequest(uri: String) =
+      Request[F](Method.GET, Uri.unsafeFromString(uri))
   }
 }

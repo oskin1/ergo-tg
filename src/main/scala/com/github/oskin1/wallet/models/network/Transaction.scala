@@ -1,4 +1,4 @@
-package com.github.oskin1.wallet.models.protocol
+package com.github.oskin1.wallet.models.network
 
 import com.github.oskin1.wallet.ModifierId
 import io.circe.Decoder
