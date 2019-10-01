@@ -13,7 +13,7 @@ resolvers ++= Seq(
   "Typesafe maven releases" at "http://repo.typesafe.com/typesafe/maven-releases/"
 )
 
-val ergoWalletVersion = "master-5449e2f4-SNAPSHOT"
+val ergoWalletVersion = "key-serialization-9dee6be9-SNAPSHOT"
 
 libraryDependencies ++= Seq(
   "org.ergoplatform" %% "ergo-wallet"      % ergoWalletVersion,
