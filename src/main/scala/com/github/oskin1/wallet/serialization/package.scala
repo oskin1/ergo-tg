@@ -2,11 +2,9 @@ package com.github.oskin1.wallet
 
 import java.nio.charset.Charset
 
-import cats.data.NonEmptyList
-import cats.implicits._
 import com.github.oskin1.wallet.models.storage.Wallet
 import com.google.common.base.Charsets
-import com.google.common.primitives.{Bytes, Ints, Longs}
+import com.google.common.primitives.{Ints, Longs}
 import io.circe.generic.auto._
 import io.circe.parser._
 import io.circe.syntax._
@@ -57,35 +55,12 @@ package object serialization {
     decode[secrets.EncryptedSecret](new String(xs, charset))
   }
 
-  implicit val walletBytesEncoder: BytesEncoder[Wallet] = { obj =>
-    val secretBytes = obj.secret.toBytes
-    val secretBytesLen = secretBytes.length
-    val addressesNum = obj.addresses.size
-    val addressesBytes = obj.addresses
-      .map(_.toBytes)
-      .foldLeft(Array.empty[Byte])(Bytes.concat(_, _))
-    Bytes.concat(
-      secretBytesLen.toBytes,
-      secretBytes,
-      addressesNum.toBytes,
-      addressesBytes
-    )
+  implicit val walletBytesEncoder: BytesEncoder[Wallet] = {
+    _.asJson.noSpaces.getBytes(charset)
   }
 
   implicit val walletBytesDecoder: BytesDecoder[Wallet] = { xs =>
-    for {
-      secretLen    <- xs.take(4).as[Int]
-      secret       <- xs.slice(4, 4 + secretLen).as[EncryptedSecret]
-      addressesNum <- xs.slice(4 + secretLen, 4 + secretLen + 4).as[Int]
-      rem = xs.drop(4 + secretLen + 4)
-      len = rem.length / addressesNum
-      addresses <- rem.grouped(len).toList.map(_.as[RawAddress]).sequence
-      nonEmptyAddresses <- NonEmptyList
-                             .fromList(addresses)
-                             .fold[Either[Throwable, NonEmptyList[RawAddress]]](
-                               Left(new Exception("Empty addresses list"))
-                             )(Right(_))
-    } yield Wallet(secret, nonEmptyAddresses)
+    decode[Wallet](new String(xs, charset))
   }
 
   private def charset: Charset = Charsets.UTF_8

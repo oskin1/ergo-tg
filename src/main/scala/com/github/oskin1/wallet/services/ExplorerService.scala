@@ -4,6 +4,7 @@ import cats.effect.Sync
 import com.github.oskin1.wallet.models.network.{Balance, Output, Transaction}
 import com.github.oskin1.wallet.{ModifierId, RawAddress, Settings}
 import io.circe.Decoder
+import org.ergoplatform.ErgoLikeTransaction
 import org.http4s.circe.jsonOf
 import org.http4s.client.Client
 import org.http4s.{Method, Request, Uri}
@@ -12,17 +13,25 @@ import org.http4s.{Method, Request, Uri}
   */
 trait ExplorerService[F[_]] {
 
-  /** Gets a transaction by its id from the network if it exists.
+  /** Get a transaction by its id from the network if it exists.
     */
   def getTransaction(id: ModifierId): F[Option[Transaction]]
 
-  /** Gets balance of the given address from the network.
+  /** Get balance of the given address from the network.
     */
   def getBalance(address: RawAddress): F[Balance]
 
-  /** Gets unspent outputs of the given address from the network
-   */
+  /** Get unspent outputs of the given address from the network.
+    */
   def getUnspentOutputs(address: RawAddress): F[List[Output]]
+
+  /** Get current height of the latest block in the network.
+    */
+  def getCurrentHeight: F[Int]
+
+  /** Submit transaction to the network.
+    */
+  def submitTransaction(tx: ErgoLikeTransaction): F[String]
 }
 
 object ExplorerService {
@@ -42,8 +51,14 @@ object ExplorerService {
 
     def getUnspentOutputs(address: RawAddress): F[List[Output]] =
       client.expect[List[Output]](
-        makeRequest(s"${settings.explorerUrl}/transactions/boxes/byAddress/unspent/$address")
+        makeRequest(
+          s"${settings.explorerUrl}/transactions/boxes/byAddress/unspent/$address"
+        )
       )(jsonOf(Sync[F], implicitly[Decoder[List[Output]]]))
+
+    def getCurrentHeight: F[Int] = ???
+
+    def submitTransaction(tx: ErgoLikeTransaction): F[String] = ???
 
     private def makeRequest(uri: String) =
       Request[F](Method.GET, Uri.unsafeFromString(uri))

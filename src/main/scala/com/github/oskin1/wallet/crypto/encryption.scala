@@ -1,8 +1,8 @@
-package com.github.oskin1.wallet
+package com.github.oskin1.wallet.crypto
 
+import org.ergoplatform.wallet.crypto
 import org.ergoplatform.wallet.secrets.EncryptedSecret
 import org.ergoplatform.wallet.settings.EncryptionSettings
-import org.ergoplatform.wallet.{crypto, secrets}
 import scorex.util.encode.Base16
 
 import scala.util.Try
@@ -13,7 +13,7 @@ object encryption {
 
   def encrypt(secret: Array[Byte], pass: String)(
     settings: EncryptionSettings
-  ): secrets.EncryptedSecret = {
+  ): EncryptedSecret = {
     val iv = scorex.utils.Random.randomBytes(crypto.AES.NonceBitsLen / 8)
     val salt = scorex.utils.Random.randomBytes(32)
     val (ciphertext, tag) = crypto.AES.encrypt(secret, pass, salt, iv)(settings)
@@ -21,7 +21,7 @@ object encryption {
   }
 
   def decrypt(
-    encryptedSecret: secrets.EncryptedSecret,
+    encryptedSecret: EncryptedSecret,
     pass: String
   ): Try[Array[Byte]] =
     Base16
