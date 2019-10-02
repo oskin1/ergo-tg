@@ -97,7 +97,15 @@ object WalletService {
       fee: Long
     ): F[String] = ???
 
-    def getBalance(chatId: ChatId.Chat): F[Balance] = ???
+    def getBalance(chatId: ChatId.Chat): F[Balance] =
+      walletRepo.readWallet(chatId).flatMap {
+        _.fold(Balance.empty.pure) { wallet =>
+          wallet.addresses
+            .map(explorerService.getBalance)
+            .sequence
+            .map(_.reduce(_ merge _))
+        }
+      }
 
     private def deriveRootWallet(
       mnemonic: String,
@@ -116,6 +124,5 @@ object WalletService {
         NonEmptyList(rootAddress.toString(), List.empty)
       )
     }
-
   }
 }

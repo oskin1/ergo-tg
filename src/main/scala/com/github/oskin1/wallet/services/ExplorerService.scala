@@ -1,8 +1,9 @@
 package com.github.oskin1.wallet.services
 
 import cats.effect.Sync
-import com.github.oskin1.wallet.models.network.{Balance, Transaction}
+import com.github.oskin1.wallet.models.network.{Balance, Output, Transaction}
 import com.github.oskin1.wallet.{ModifierId, RawAddress, Settings}
+import io.circe.Decoder
 import org.http4s.circe.jsonOf
 import org.http4s.client.Client
 import org.http4s.{Method, Request, Uri}
@@ -18,6 +19,10 @@ trait ExplorerService[F[_]] {
   /** Gets balance of the given address from the network.
     */
   def getBalance(address: RawAddress): F[Balance]
+
+  /** Gets unspent outputs of the given address from the network
+   */
+  def getUnspentOutputs(address: RawAddress): F[List[Output]]
 }
 
 object ExplorerService {
@@ -28,12 +33,17 @@ object ExplorerService {
     def getTransaction(id: ModifierId): F[Option[Transaction]] =
       client.expectOption[Transaction](
         makeRequest(s"${settings.explorerUrl}/transactions/$id")
-      )(jsonOf(Sync[F], Transaction.decoder))
+      )(jsonOf(Sync[F], implicitly[Decoder[Transaction]]))
 
     def getBalance(address: String): F[Balance] =
       client.expect[Balance](
         makeRequest(s"${settings.explorerUrl}/addresses/$address")
-      )(jsonOf(Sync[F], Balance.decoder))
+      )(jsonOf(Sync[F], implicitly[Decoder[Balance]]))
+
+    def getUnspentOutputs(address: RawAddress): F[List[Output]] =
+      client.expect[List[Output]](
+        makeRequest(s"${settings.explorerUrl}/transactions/boxes/byAddress/unspent/$address")
+      )(jsonOf(Sync[F], implicitly[Decoder[List[Output]]]))
 
     private def makeRequest(uri: String) =
       Request[F](Method.GET, Uri.unsafeFromString(uri))
