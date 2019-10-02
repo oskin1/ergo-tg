@@ -53,7 +53,7 @@ object WalletService {
 
   final class Live[F[_]: Sync](
     explorerService: ExplorerService[F],
-    secretRepo: WalletRepo[F],
+    walletRepo: WalletRepo[F],
     settings: Settings
   ) extends WalletService[F] {
 
@@ -67,7 +67,7 @@ object WalletService {
       mnemonicPassOpt: Option[String],
     ): F[RestoredWallet] = {
       val wallet = deriveRootWallet(mnemonic, pass, mnemonicPassOpt)
-      secretRepo.putWallet(chatId, wallet) *> Sync[F].delay(
+      walletRepo.putWallet(chatId, wallet) *> Sync[F].delay(
         RestoredWallet(wallet.addresses.head)
       )
     }
@@ -83,7 +83,7 @@ object WalletService {
         .toMnemonic(entropy)
         .map { mnemonic =>
           val wallet = deriveRootWallet(mnemonic, pass, mnemonicPassOpt)
-          secretRepo.putWallet(chatId, wallet) *> Sync[F].delay(
+          walletRepo.putWallet(chatId, wallet) *> Sync[F].delay(
             NewWallet(wallet.addresses.head, mnemonic)
           )
         }
