@@ -8,6 +8,8 @@ import zio.interop.catz._
 
 object WalletApp extends CatsApp {
 
+  import scenarios._
+
   def program: Stream[Task, Update] =
     Stream.eval(Task.effect(System.getenv("BOT_TOKEN"))).flatMap { token =>
       Stream

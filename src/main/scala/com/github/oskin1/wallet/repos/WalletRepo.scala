@@ -1,15 +1,14 @@
 package com.github.oskin1.wallet.repos
 
-import canoe.models.ChatId
 import cats.{Monad, MonadError}
 import com.github.oskin1.wallet.models.storage.Wallet
 import com.github.oskin1.wallet.storage.Storage
 
 trait WalletRepo[F[_]] {
 
-  def putWallet(chatId: ChatId.Chat, wallet: Wallet): F[Unit]
+  def putWallet(chatId: Long, wallet: Wallet): F[Unit]
 
-  def readWallet(chatId: ChatId.Chat): F[Option[Wallet]]
+  def readWallet(chatId: Long): F[Option[Wallet]]
 }
 
 object WalletRepo {
@@ -19,12 +18,12 @@ object WalletRepo {
   ) extends WalletRepo[F] {
 
     def putWallet(
-      chatId: ChatId.Chat,
+      chatId: Long,
       wallet: Wallet
     ): F[Unit] =
-      storage.putT[Long, Wallet](chatId.id, wallet)
+      storage.putT[Long, Wallet](chatId, wallet)
 
-    def readWallet(chatId: ChatId.Chat): F[Option[Wallet]] =
-      storage.getT[Long, Wallet](chatId.id)
+    def readWallet(chatId: Long): F[Option[Wallet]] =
+      storage.getT[Long, Wallet](chatId)
   }
 }

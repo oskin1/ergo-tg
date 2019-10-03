@@ -7,7 +7,7 @@ import scorex.util.encode.Base16
 
 import scala.util.Try
 
-/** Crypto utilities
+/** Crypto utilities.
   */
 object encryption {
 

@@ -9,6 +9,10 @@ final case class Balance(confirmedBalance: Long, totalBalance: Long) {
       this.confirmedBalance + that.confirmedBalance,
       this.totalBalance + that.totalBalance
     )
+
+  def verboseMsg: String =
+    s"Confirmed balance is: $confirmedBalance nanoErg" +
+    s"\n Total balance is: $totalBalance nanoErg."
 }
 
 object Balance {

@@ -36,33 +36,33 @@ trait WalletService[F[_]] {
     * it with a given chatId and persist it.
     */
   def restoreWallet(
-    chatId: ChatId.Chat,
+    chatId: Long,
     mnemonic: String,
     pass: String,
-    mnemonicPassOpt: Option[String]
+    mnemonicPassOpt: Option[String] = None
   ): F[RestoredWallet]
 
   /** Create new wallet, associate it with a given
     * chatId and persist it.
     */
   def createWallet(
-    chatId: ChatId.Chat,
+    chatId: Long,
     pass: String,
-    mnemonicPassOpt: Option[String],
+    mnemonicPassOpt: Option[String] = None
   ): F[NewWallet]
 
   /** Create new transaction and submit it to the network.
-   */
+    */
   def createTransaction(
-    chatId: ChatId.Chat,
+    chatId: Long,
     pass: String,
     requests: List[TransactionRequest],
     fee: Long
   ): F[String]
 
   /** Get an aggregated balance for a given chatId from the network.
-   */
-  def getBalance(chatId: ChatId.Chat): F[Balance]
+    */
+  def getBalance(chatId: Long): F[Option[Balance]]
 }
 
 object WalletService {
@@ -77,7 +77,7 @@ object WalletService {
       ErgoAddressEncoder(settings.addressPrefix)
 
     def restoreWallet(
-      chatId: ChatId.Chat,
+      chatId: Long,
       mnemonic: String,
       pass: String,
       mnemonicPassOpt: Option[String],
@@ -89,7 +89,7 @@ object WalletService {
     }
 
     def createWallet(
-      chatId: ChatId.Chat,
+      chatId: Long,
       pass: String,
       mnemonicPassOpt: Option[String]
     ): F[NewWallet] = {
@@ -107,7 +107,7 @@ object WalletService {
     }
 
     def createTransaction(
-      chatId: ChatId.Chat,
+      chatId: Long,
       pass: String,
       requests: List[TransactionRequest],
       fee: Long
@@ -157,13 +157,13 @@ object WalletService {
             .raiseError(new Exception(s"Wallet with id $chatId not found"))
       }
 
-    def getBalance(chatId: ChatId.Chat): F[Balance] =
+    def getBalance(chatId: Long): F[Option[Balance]] =
       walletRepo.readWallet(chatId).flatMap {
-        _.fold(Applicative[F].pure(Balance.empty)) { wallet =>
+        _.fold[F[Option[Balance]]](Applicative[F].pure(None)) { wallet =>
           wallet.accounts
             .map(x => explorerService.getBalance(x.rawAddress))
             .sequence
-            .map(_.reduce[Balance](_ merge _))
+            .map(x => Some(x.reduce[Balance](_ merge _)))
         }
       }
 
