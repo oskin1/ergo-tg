@@ -32,6 +32,9 @@ import scala.util.{Failure, Success, Try}
   */
 trait WalletService[F[_]] {
 
+  /** Restore from existing mnemonic phrase, associate
+    * it with a given chatId and persist it.
+    */
   def restoreWallet(
     chatId: ChatId.Chat,
     mnemonic: String,
@@ -39,12 +42,17 @@ trait WalletService[F[_]] {
     mnemonicPassOpt: Option[String]
   ): F[RestoredWallet]
 
+  /** Create new wallet, associate it with a given
+    * chatId and persist it.
+    */
   def createWallet(
     chatId: ChatId.Chat,
     pass: String,
     mnemonicPassOpt: Option[String],
   ): F[NewWallet]
 
+  /** Create new transaction and submit it to the network.
+   */
   def createTransaction(
     chatId: ChatId.Chat,
     pass: String,
@@ -52,6 +60,8 @@ trait WalletService[F[_]] {
     fee: Long
   ): F[String]
 
+  /** Get an aggregated balance for a given chatId from the network.
+   */
   def getBalance(chatId: ChatId.Chat): F[Balance]
 }
 
