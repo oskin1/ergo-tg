@@ -1,13 +1,11 @@
 package com.github.oskin1.wallet.crypto
 
-import com.github.oskin1.wallet.BoxId
 import org.ergoplatform.{
   ErgoLikeTransaction,
   Input,
   UnsignedErgoLikeTransaction
 }
 import scorex.crypto.authds.ADKey
-import scorex.util.encode.Base16
 import sigmastate.basics.DLogProtocol.DLogProverInput
 import sigmastate.interpreter.{ContextExtension, ProverResult}
 
@@ -23,13 +21,9 @@ object UnsafeMultiProver {
     */
   def prove(
     unsignedTx: UnsignedErgoLikeTransaction,
-    inputs: List[(BoxId, DLogProverInput)]
+    inputs: List[(ADKey, DLogProverInput)]
   ): ErgoLikeTransaction = {
     val signedInputs = inputs.toIndexedSeq
-      .flatMap {
-        case (boxId, sk) =>
-          Base16.decode(boxId).toOption.map(x => (ADKey @@ x) -> sk)
-      }
       .map {
         case (boxId, sk) =>
           val sig = ProverResult(

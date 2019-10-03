@@ -1,13 +1,18 @@
 package com.github.oskin1.wallet.services
 
 import cats.effect.Sync
-import com.github.oskin1.wallet.models.network.{Balance, Output, Transaction}
+import com.github.oskin1.wallet.models.network.{
+  Balance,
+  BlockchainInfo,
+  Output,
+  Transaction
+}
 import com.github.oskin1.wallet.{ModifierId, RawAddress, Settings}
 import io.circe.Decoder
-import org.ergoplatform.ErgoLikeTransaction
-import org.http4s.circe.jsonOf
+import org.ergoplatform.{ErgoLikeTransaction, JsonCodecs}
 import org.http4s.client.Client
 import org.http4s.{Method, Request, Uri}
+import org.http4s.circe.{jsonEncoderOf, jsonOf}
 
 /** Provides access to the Ergo network explorer.
   */
@@ -27,7 +32,7 @@ trait ExplorerService[F[_]] {
 
   /** Get current height of the latest block in the network.
     */
-  def getCurrentHeight: F[Int]
+  def getBlockchainInfo: F[BlockchainInfo]
 
   /** Submit transaction to the network.
     */
@@ -37,30 +42,42 @@ trait ExplorerService[F[_]] {
 object ExplorerService {
 
   final class Live[F[_]: Sync](client: Client[F], settings: Settings)
-    extends ExplorerService[F] {
+    extends ExplorerService[F]
+    with JsonCodecs {
 
     def getTransaction(id: ModifierId): F[Option[Transaction]] =
       client.expectOption[Transaction](
-        makeRequest(s"${settings.explorerUrl}/transactions/$id")
+        makeGetRequest(s"${settings.explorerUrl}/transactions/$id")
       )(jsonOf(Sync[F], implicitly[Decoder[Transaction]]))
 
     def getBalance(address: String): F[Balance] =
       client.expect[Balance](
-        makeRequest(s"${settings.explorerUrl}/addresses/$address")
+        makeGetRequest(s"${settings.explorerUrl}/addresses/$address")
       )(jsonOf(Sync[F], implicitly[Decoder[Balance]]))
 
     def getUnspentOutputs(address: RawAddress): F[List[Output]] =
       client.expect[List[Output]](
-        makeRequest(
+        makeGetRequest(
           s"${settings.explorerUrl}/transactions/boxes/byAddress/unspent/$address"
         )
       )(jsonOf(Sync[F], implicitly[Decoder[List[Output]]]))
 
-    def getCurrentHeight: F[Int] = ???
+    def getBlockchainInfo: F[BlockchainInfo] =
+      client.expect[BlockchainInfo](
+        makeGetRequest(
+          s"${settings.explorerUrl}/blocks?offset=0&limit=1&sortDirection=DESC"
+        )
+      )(jsonOf(Sync[F], implicitly[Decoder[BlockchainInfo]]))
 
-    def submitTransaction(tx: ErgoLikeTransaction): F[String] = ???
+    def submitTransaction(tx: ErgoLikeTransaction): F[String] =
+      client.expect[String](
+        Request[F](
+          Method.POST,
+          Uri.unsafeFromString(s"${settings.explorerUrl}/transactions")
+        ).withEntity(tx)(jsonEncoderOf(Sync[F], ergoLikeTransactionEncoder))
+      )
 
-    private def makeRequest(uri: String) =
+    private def makeGetRequest(uri: String) =
       Request[F](Method.GET, Uri.unsafeFromString(uri))
   }
 }

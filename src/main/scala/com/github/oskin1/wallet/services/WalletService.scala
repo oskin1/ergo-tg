@@ -1,10 +1,12 @@
 package com.github.oskin1.wallet.services
 
 import canoe.models.ChatId
-import cats.{Applicative, MonadError}
 import cats.data.NonEmptyList
 import cats.effect.Sync
 import cats.implicits._
+import cats.{Applicative, MonadError}
+import com.github.oskin1.wallet.Settings
+import com.github.oskin1.wallet.crypto.{encryption, UnsafeMultiProver}
 import com.github.oskin1.wallet.models.network.{Balance, Output}
 import com.github.oskin1.wallet.models.storage.{Account, Wallet}
 import com.github.oskin1.wallet.models.{
@@ -14,23 +16,16 @@ import com.github.oskin1.wallet.models.{
   TransactionRequest
 }
 import com.github.oskin1.wallet.repos.WalletRepo
-import com.github.oskin1.wallet.Settings
-import com.github.oskin1.wallet.crypto.encryption
-import org.ergoplatform.wallet.interpreter.ErgoUnsafeProver
 import org.ergoplatform.wallet.mnemonic.Mnemonic
 import org.ergoplatform.wallet.secrets.{
   ExtendedSecretKey,
   ExtendedSecretKeySerializer
 }
-import org.ergoplatform.{
-  ErgoAddressEncoder,
-  ErgoBoxCandidate,
-  ErgoLikeTransaction,
-  P2PKAddress,
-  UnsignedErgoLikeTransaction
-}
+import org.ergoplatform._
+import scorex.crypto.authds.ADKey
+import scorex.util.encode.Base16
 
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 /** Provides actual wallet functionality.
   */
@@ -114,7 +109,7 @@ object WalletService {
               e =>
                 MonadError[F, Throwable].raiseError(
                   new Exception(s"Incorrect pass: ${e.getMessage}")
-                ),
+              ),
               r => Applicative[F].pure(r)
             )
             .flatMap { seed =>
@@ -123,7 +118,6 @@ object WalletService {
                 .map { account =>
                   explorerService
                     .getUnspentOutputs(account.rawAddress)
-                    .map(collectOutputs(_, requests.map(_.amount).sum + fee))
                     .map(
                       _.map(
                         _ -> rootSk
@@ -134,15 +128,19 @@ object WalletService {
                 }
                 .sequence
                 .flatMap { x =>
-                  explorerService.getCurrentHeight.flatMap { height =>
-                    makeTransaction(x.toList.flatten, requests, fee, height)
+                  collectOutputs(
+                    x.toList.flatten,
+                    requests.map(_.amount).sum + fee
+                  ).fold[F[List[(Output, ExtendedSecretKey)]]](
+                    e => MonadError[F, Throwable].raiseError(e),
+                    r => Applicative[F].pure(r)
+                  )
+                }
+                .flatMap { inputs =>
+                  explorerService.getBlockchainInfo.flatMap { info =>
+                    makeTransaction(inputs, requests, fee, info.height)
                       .fold[F[ErgoLikeTransaction]](
-                        e =>
-                          MonadError[F, Throwable].raiseError(
-                            new Exception(
-                              s"Transaction assembly error: ${e.getMessage}"
-                            )
-                          ),
+                        e => MonadError[F, Throwable].raiseError(e),
                         r => Applicative[F].pure(r)
                       )
                       .flatMap(explorerService.submitTransaction)
@@ -183,20 +181,22 @@ object WalletService {
     }
 
     private def collectOutputs(
-      outputs: List[Output],
+      outputs: List[(Output, ExtendedSecretKey)],
       requiredAmount: Long
-    ): List[Output] = {
+    ): Try[List[(Output, ExtendedSecretKey)]] = {
       @scala.annotation.tailrec
       def loop(
-        acc: List[Output],
-        rem: List[Output],
+        acc: List[(Output, ExtendedSecretKey)],
+        rem: List[(Output, ExtendedSecretKey)],
         amtRem: Long
-      ): List[Output] =
+      ): Try[List[(Output, ExtendedSecretKey)]] =
         rem match {
           case head :: tail if amtRem > 0 =>
-            loop(acc :+ head, tail, amtRem - head.value)
+            loop(acc :+ head, tail, amtRem - head._1.value)
+          case _ if amtRem <= 0 =>
+            Success(acc)
           case _ =>
-            acc
+            Failure(new Exception("Not enough boxes"))
         }
       loop(List.empty, outputs, requiredAmount)
     }
@@ -206,6 +206,30 @@ object WalletService {
       requests: List[TransactionRequest],
       fee: Long,
       currentHeight: Int
-    ): Try[ErgoLikeTransaction] = ???
+    ): Try[ErgoLikeTransaction] =
+      inputs
+        .map {
+          case (out, sk) =>
+            Base16.decode(out.id).map(x => (ADKey @@ x, sk.key))
+        }
+        .sequence
+        .map { decodedInputs =>
+          val unsignedInputs =
+            decodedInputs.map(x => new UnsignedInput(x._1)).toIndexedSeq
+          val feeOutput = new ErgoBoxCandidate(
+            fee,
+            ErgoScriptPredef.feeProposition(),
+            currentHeight
+          )
+          val outputs = requests.map { req =>
+            new ErgoBoxCandidate(req.amount, req.address.script, currentHeight)
+          }.toIndexedSeq
+          val unsignedTx = new UnsignedErgoLikeTransaction(
+            unsignedInputs,
+            IndexedSeq.empty,
+            outputs :+ feeOutput
+          )
+          UnsafeMultiProver.prove(unsignedTx, decodedInputs)
+        }
   }
 }
