@@ -18,6 +18,7 @@ import com.github.oskin1.wallet.models.{
 import com.github.oskin1.wallet.repos.WalletRepo
 import org.ergoplatform.wallet.mnemonic.Mnemonic
 import org.ergoplatform.wallet.secrets.{
+  DerivationPath,
   ExtendedSecretKey,
   ExtendedSecretKeySerializer
 }
@@ -118,23 +119,17 @@ object WalletService {
                 .map { account =>
                   explorerService
                     .getUnspentOutputs(account.rawAddress)
-                    .map(
-                      _.map(
-                        _ -> rootSk
-                          .derive(account.derivationPath)
-                          .asInstanceOf[ExtendedSecretKey]
-                      )
-                    )
+                    .map {
+                      _.map(_ -> deriveKey(rootSk, account.derivationPath))
+                    }
                 }
                 .sequence
                 .flatMap { x =>
-                  collectOutputs(
-                    x.toList.flatten,
-                    requests.map(_.amount).sum + fee
-                  ).fold[F[List[(Output, ExtendedSecretKey)]]](
-                    e => MonadError[F, Throwable].raiseError(e),
-                    r => Applicative[F].pure(r)
-                  )
+                  collectOutputs(x.toList.flatten, requests, fee)
+                    .fold[F[List[(Output, ExtendedSecretKey)]]](
+                      e => MonadError[F, Throwable].raiseError(e),
+                      r => Applicative[F].pure(r)
+                    )
                 }
                 .flatMap { inputs =>
                   explorerService.getBlockchainInfo.flatMap { info =>
@@ -180,9 +175,16 @@ object WalletService {
       )
     }
 
+    private def deriveKey(
+      rootSk: ExtendedSecretKey,
+      derivationPath: DerivationPath
+    ): ExtendedSecretKey =
+      rootSk.derive(derivationPath).asInstanceOf[ExtendedSecretKey]
+
     private def collectOutputs(
       outputs: List[(Output, ExtendedSecretKey)],
-      requiredAmount: Long
+      requests: List[TransactionRequest],
+      fee: Long
     ): Try[List[(Output, ExtendedSecretKey)]] = {
       @scala.annotation.tailrec
       def loop(
@@ -198,7 +200,7 @@ object WalletService {
           case _ =>
             Failure(new Exception("Not enough boxes"))
         }
-      loop(List.empty, outputs, requiredAmount)
+      loop(List.empty, outputs, requests.map(_.amount).sum + fee)
     }
 
     private def makeTransaction(
