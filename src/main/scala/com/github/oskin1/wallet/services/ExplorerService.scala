@@ -4,7 +4,7 @@ import cats.effect.Sync
 import com.github.oskin1.wallet.models.network.{
   Balance,
   BlockchainInfo,
-  Output,
+  Box,
   Transaction
 }
 import com.github.oskin1.wallet.{ModifierId, RawAddress, Settings}
@@ -28,7 +28,7 @@ trait ExplorerService[F[_]] {
 
   /** Get unspent outputs of the given address from the network.
     */
-  def getUnspentOutputs(address: RawAddress): F[List[Output]]
+  def getUnspentOutputs(address: RawAddress): F[List[Box]]
 
   /** Get current height of the latest block in the network.
     */
@@ -55,12 +55,12 @@ object ExplorerService {
         makeGetRequest(s"${settings.explorerUrl}/addresses/$address")
       )(jsonOf(Sync[F], implicitly[Decoder[Balance]]))
 
-    def getUnspentOutputs(address: RawAddress): F[List[Output]] =
-      client.expect[List[Output]](
+    def getUnspentOutputs(address: RawAddress): F[List[Box]] =
+      client.expect[List[Box]](
         makeGetRequest(
           s"${settings.explorerUrl}/transactions/boxes/byAddress/unspent/$address"
         )
-      )(jsonOf(Sync[F], implicitly[Decoder[List[Output]]]))
+      )(jsonOf(Sync[F], implicitly[Decoder[List[Box]]]))
 
     def getBlockchainInfo: F[BlockchainInfo] =
       client.expect[BlockchainInfo](

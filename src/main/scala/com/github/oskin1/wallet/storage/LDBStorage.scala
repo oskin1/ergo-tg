@@ -13,7 +13,6 @@ final class LDBStorage[F[_]: Async](db: DB) extends Storage[F] {
     }
 
   def put(items: Seq[(K, V)]): F[Unit] =
-
     (for {
       batch <- Resource.make(Sync[F].delay(db.createWriteBatch()))(
                  x => Sync[F].delay(x.close())
