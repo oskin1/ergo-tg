@@ -14,9 +14,9 @@ import com.github.oskin1.wallet.modules.{
   SecretManagement,
   TransactionManagement
 }
-import com.github.oskin1.wallet.repos.WalletRepo
+import com.github.oskin1.wallet.repositories.WalletRepo
 import com.github.oskin1.wallet.storage.LDBStorage
-import com.github.oskin1.wallet.{repos, services, Settings}
+import com.github.oskin1.wallet.{repositories, services, Settings}
 import org.ergoplatform._
 import org.ergoplatform.wallet.secrets.ExtendedSecretKey
 import org.http4s.client.Client
@@ -70,7 +70,7 @@ object WalletService {
     with SecretManagement[F] {
 
     implicit private val addressEncoder: ErgoAddressEncoder =
-      ErgoAddressEncoder(settings.addressPrefix)
+      ErgoAddressEncoder(settings.addressPrefix.toByte)
 
     def restoreWallet(
       chatId: Long,
@@ -156,7 +156,7 @@ object WalletService {
       val explorerService =
         new services.ExplorerService.Live[F](client, settings)
       val storage = new LDBStorage[F](db)
-      val walletRepo = new repos.WalletRepo.Live[F](storage)
+      val walletRepo = new repositories.WalletRepo.Live[F](storage)
       new Live[F](explorerService, walletRepo, settings)
     }
   }

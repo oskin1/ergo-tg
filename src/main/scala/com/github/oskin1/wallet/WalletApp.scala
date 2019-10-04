@@ -4,11 +4,12 @@ import canoe.api.{Bot, TelegramClient}
 import canoe.models.Update
 import com.github.oskin1.wallet.services.WalletService
 import com.github.oskin1.wallet.storage.DataBase
-import fs2._
 import org.http4s.client.Client
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.iq80.leveldb.DB
-import pureconfig.ConfigSource
+import fs2._
+import pureconfig._
+import pureconfig.generic.auto._
 import zio._
 import zio.interop.catz._
 
@@ -40,15 +41,15 @@ object WalletApp extends CatsApp with DataBase {
   private def makeEnv =
     for {
       settings <- Stream.eval(
-        Task.effect(ConfigSource.default.loadOrThrow[Settings])
-      )
+                    Task.effect(ConfigSource.default.loadOrThrow[Settings])
+                  )
       token <- Stream.eval(Task.effect(System.getenv("BOT_TOKEN")))
       telegramClient <- Stream.resource[Task, TelegramClient[Task]](
-        TelegramClient.global[Task](token)
-      )
+                          TelegramClient.global[Task](token)
+                        )
       explorerClient <- Stream.resource[Task, Client[Task]](
-        BlazeClientBuilder[Task](global).resource
-      )
+                          BlazeClientBuilder[Task](global).resource
+                        )
       db <- Stream.resource[Task, DB](makeDb[Task](settings.storagePath))
     } yield (settings, db, explorerClient, telegramClient)
 

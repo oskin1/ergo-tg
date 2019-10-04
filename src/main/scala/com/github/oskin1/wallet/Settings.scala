@@ -5,7 +5,7 @@ import org.ergoplatform.wallet.settings.EncryptionSettings
 final case class Settings(
   storagePath: String,
   explorerUrl: String,
-  addressPrefix: Byte,
+  addressPrefix: Int,
   seedStrengthBits: Int,
   mnemonicPhraseLanguage: String,
   encryption: EncryptionSettings

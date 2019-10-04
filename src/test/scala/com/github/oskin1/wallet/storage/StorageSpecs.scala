@@ -2,6 +2,7 @@ package com.github.oskin1.wallet.storage
 
 import java.io.File
 
+import cats.effect.IO
 import org.iq80.leveldb.Options
 import org.scalacheck.Gen
 import zio.interop.catz._
@@ -30,7 +31,7 @@ trait StorageSpecs {
   def createDb(path: String): LDBStorage[Task] = {
     val dir = new File(path); dir.mkdirs()
     val options = new Options(); options.createIfMissing(true)
-    val db =LDBFactory.factory.get.open(dir, options)
+    val db = new LDBFactory {}.loadFactory[IO].unsafeRunSync().open(dir, options)
     new LDBStorage[Task](db)
   }
 

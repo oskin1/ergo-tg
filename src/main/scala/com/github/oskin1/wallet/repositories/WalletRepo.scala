@@ -1,4 +1,4 @@
-package com.github.oskin1.wallet.repos
+package com.github.oskin1.wallet.repositories
 
 import cats.{Monad, MonadError}
 import com.github.oskin1.wallet.models.storage.Wallet
