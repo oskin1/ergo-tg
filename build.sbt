@@ -16,12 +16,13 @@ resolvers ++= Seq(
 val ergoWalletVersion = "key-serialization-9dee6be9-SNAPSHOT"
 
 libraryDependencies ++= Seq(
-  "org.ergoplatform" %% "ergo-wallet"      % ergoWalletVersion,
-  "org.typelevel"    %% "cats-effect"      % "2.0.0-RC2",
-  "dev.zio"          %% "zio"              % "1.0.0-RC13",
-  "dev.zio"          %% "zio-interop-cats" % "2.0.0.0-RC3",
-  "co.fs2"           %% "fs2-core"         % "2.0.1",
-  "org.augustjune"   %% "canoe"            % "0.1.2",
+  "org.ergoplatform"      %% "ergo-wallet"      % ergoWalletVersion,
+  "org.typelevel"         %% "cats-effect"      % "2.0.0-RC2",
+  "dev.zio"               %% "zio"              % "1.0.0-RC13",
+  "dev.zio"               %% "zio-interop-cats" % "2.0.0.0-RC3",
+  "co.fs2"                %% "fs2-core"         % "2.0.1",
+  "org.augustjune"        %% "canoe"            % "0.1.2",
+  "com.github.pureconfig" %% "pureconfig"       % "0.12.1",
 
   ("org.fusesource.leveldbjni" % "leveldbjni-all" % "1.8").exclude("org.iq80.leveldb", "leveldb"),
   "org.iq80.leveldb" % "leveldb" % "0.12",
