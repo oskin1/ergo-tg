@@ -9,11 +9,7 @@ import org.ergoplatform.ErgoAddressEncoder
 object UserInputParser {
 
   private def base58String[_: P]: P[String] =
-    P(
-      CharIn("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
-        .rep(2)
-        .!
-    )
+    P(CharIn("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz").rep(2).!)
 
   private def posLong[_: P]: P[Long] = P(CharIn("0-9").rep(1).!.map(_.toLong))
 
@@ -23,6 +19,8 @@ object UserInputParser {
   private def paymentRequests[_: P]: P[Seq[(String, Long)]] =
     paymentRequest.rep(1, sep = ",")
 
+  /** Parse user input of expected format into a list of payment requests.
+    */
   def parsePaymentRequests(
     input: String
   )(implicit e: ErgoAddressEncoder): Either[String, List[PaymentRequest]] =
@@ -39,6 +37,8 @@ object UserInputParser {
         )
     )
 
+  /** Parse user input into positive long integer.
+   */
   def parsePosLong(input: String): Either[String, Long] =
     parse(input, posLong(_))
       .fold((msg, _, _) => Left(msg), (num, _) => Right(num))

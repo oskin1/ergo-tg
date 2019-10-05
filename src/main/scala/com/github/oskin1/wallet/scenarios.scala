@@ -14,6 +14,8 @@ object scenarios {
   private val willBeDeleted: String =
     "(after you send the message it will be deleted)"
 
+  private val minFeeAmount: Long = 1000000L
+
   def restoreWallet[F[_]: TelegramClient: Functor](
     implicit service: WalletService[F]
   ): Scenario[F, Unit] =
@@ -101,7 +103,7 @@ object scenarios {
     for {
       _ <- Scenario.eval(
              chat.send(
-               "Specify fee amount. Recommended amount is 1000000 nanoErg."
+               "Specify fee amount. Minimum is 1000000 nanoErg."
              )
            )
       in <- Scenario.next(text)
@@ -109,11 +111,15 @@ object scenarios {
               .parsePosLong(in)
               .fold(
                 e =>
-                  Scenario
-                    .eval(chat.send(s"Wrong input format: $e")) >> provideFee(
-                    chat
-                ),
-                r => Scenario.pure[F, Long](r)
+                  Scenario.eval(
+                    chat.send(s"Wrong input format: $e")
+                  ) >> provideFee(chat),
+                r =>
+                  if (r >= minFeeAmount) Scenario.pure[F, Long](r)
+                  else
+                    Scenario.eval(
+                      chat.send(s"Fee amount is too small. Try again.")
+                    ) >> provideFee(chat)
               )
     } yield fee
 
@@ -154,7 +160,7 @@ object scenarios {
             id =>
               Scenario.eval(
                 chat.send(
-                  s"Your transaction was submitted to the network, txID: $id"
+                  s"Your transaction was submitted to the network. ID: $id"
                 )
             )
           )

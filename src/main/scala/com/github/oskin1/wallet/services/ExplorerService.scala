@@ -42,8 +42,9 @@ trait ExplorerService[F[_]] {
 object ExplorerService {
 
   final class Live[F[_]: Sync](client: Client[F], settings: Settings)
-    extends ExplorerService[F]
-    with JsonCodecs {
+    extends ExplorerService[F] {
+
+    private val codecs = new JsonCodecs {}
 
     def getTransaction(id: ModifierId): F[Option[Transaction]] =
       client.expectOption[Transaction](
@@ -74,7 +75,7 @@ object ExplorerService {
         Request[F](
           Method.POST,
           Uri.unsafeFromString(s"${settings.explorerUrl}/transactions")
-        ).withEntity(tx)(jsonEncoderOf(Sync[F], ergoLikeTransactionEncoder))
+        ).withEntity(tx)(jsonEncoderOf(Sync[F], codecs.ergoLikeTransactionEncoder))
       )
 
     private def makeGetRequest(uri: String) =
