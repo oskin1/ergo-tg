@@ -3,7 +3,7 @@ package com.github.oskin1.wallet.modules
 import cats.implicits._
 import cats.{Applicative, MonadError}
 import com.github.oskin1.wallet.crypto.UnsafeMultiProver
-import com.github.oskin1.wallet.models.TransactionRequest
+import com.github.oskin1.wallet.models.PaymentRequest
 import com.github.oskin1.wallet.models.network.Box
 import org.ergoplatform.{
   ErgoBoxCandidate,
@@ -25,9 +25,9 @@ trait TransactionManagement[F[_]] {
     * @param fee      - fee amount
     */
   protected def collectOutputs(
-    outputs: List[(Box, ExtendedSecretKey)],
-    requests: List[TransactionRequest],
-    fee: Long
+                                outputs: List[(Box, ExtendedSecretKey)],
+                                requests: List[PaymentRequest],
+                                fee: Long
   )(
     implicit F: MonadError[F, Throwable]
   ): F[List[(Box, ExtendedSecretKey)]] = {
@@ -58,10 +58,10 @@ trait TransactionManagement[F[_]] {
     * @param currentHeight - current blockchain height
     */
   protected def makeTransaction(
-    inputs: List[(Box, ExtendedSecretKey)],
-    requests: List[TransactionRequest],
-    fee: Long,
-    currentHeight: Int
+                                 inputs: List[(Box, ExtendedSecretKey)],
+                                 requests: List[PaymentRequest],
+                                 fee: Long,
+                                 currentHeight: Int
   )(implicit F: MonadError[F, Throwable]): F[ErgoLikeTransaction] =
     inputs
       .map {

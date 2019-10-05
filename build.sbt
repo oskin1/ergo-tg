@@ -23,6 +23,7 @@ libraryDependencies ++= Seq(
   "co.fs2"                %% "fs2-core"         % "2.0.1",
   "org.augustjune"        %% "canoe"            % "0.1.2",
   "com.github.pureconfig" %% "pureconfig"       % "0.12.1",
+  "com.lihaoyi"           %% "fastparse"        % "2.1.3",
 
   ("org.fusesource.leveldbjni" % "leveldbjni-all" % "1.8").exclude("org.iq80.leveldb", "leveldb"),
   "org.iq80.leveldb" % "leveldb" % "0.12",

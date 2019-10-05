@@ -5,18 +5,11 @@ import cats.implicits._
 import cats.{Applicative, MonadError}
 import com.github.oskin1.wallet.models.network.Balance
 import com.github.oskin1.wallet.models.storage.Wallet
-import com.github.oskin1.wallet.models.{
-  NewWallet,
-  RestoredWallet,
-  TransactionRequest
-}
-import com.github.oskin1.wallet.modules.{
-  SecretManagement,
-  TransactionManagement
-}
+import com.github.oskin1.wallet.models.{NewWallet, PaymentRequest, RestoredWallet}
+import com.github.oskin1.wallet.modules.{SecretManagement, TransactionManagement}
 import com.github.oskin1.wallet.repositories.WalletRepo
 import com.github.oskin1.wallet.storage.LDBStorage
-import com.github.oskin1.wallet.{repositories, services, Settings}
+import com.github.oskin1.wallet.{Settings, WalletNotFound, repositories, services}
 import org.ergoplatform._
 import org.ergoplatform.wallet.secrets.ExtendedSecretKey
 import org.http4s.client.Client
@@ -50,13 +43,17 @@ trait WalletService[F[_]] {
   def createTransaction(
     chatId: Long,
     pass: String,
-    requests: List[TransactionRequest],
+    requests: List[PaymentRequest],
     fee: Long
   ): F[String]
 
   /** Get an aggregated balance for a given chatId from the network.
     */
   def getBalance(chatId: Long): F[Option[Balance]]
+
+  /** Check whether a wallet associated with a given `chatId` exists.
+    */
+  def exists(chatId: Long): F[Boolean]
 }
 
 object WalletService {
@@ -70,7 +67,7 @@ object WalletService {
     with SecretManagement[F] {
 
     implicit private val addressEncoder: ErgoAddressEncoder =
-      ErgoAddressEncoder(settings.addressPrefix.toByte)
+      settings.addressEncoder
 
     def restoreWallet(
       chatId: Long,
@@ -101,7 +98,7 @@ object WalletService {
     def createTransaction(
       chatId: Long,
       pass: String,
-      requests: List[TransactionRequest],
+      requests: List[PaymentRequest],
       fee: Long
     ): F[String] =
       walletRepo.readWallet(chatId).flatMap {
@@ -130,7 +127,7 @@ object WalletService {
             }
         case None =>
           MonadError[F, Throwable]
-            .raiseError(new Exception(s"Wallet with id $chatId not found"))
+            .raiseError(WalletNotFound)
       }
 
     def getBalance(chatId: Long): F[Option[Balance]] =
@@ -142,6 +139,9 @@ object WalletService {
             .map(x => Some(x.reduce[Balance](_ merge _)))
         }
       }
+
+    def exists(chatId: Long): F[Boolean] =
+      walletRepo.readWallet(chatId).map(_.isDefined)
   }
 
   object Live {

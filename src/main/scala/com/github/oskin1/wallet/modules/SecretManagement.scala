@@ -1,14 +1,10 @@
 package com.github.oskin1.wallet.modules
 
 import cats.{Applicative, MonadError}
-import com.github.oskin1.wallet.Settings
+import com.github.oskin1.wallet.{AuthError, Settings}
 import com.github.oskin1.wallet.crypto.encryption
 import org.ergoplatform.wallet.mnemonic.Mnemonic
-import org.ergoplatform.wallet.secrets.{
-  DerivationPath,
-  EncryptedSecret,
-  ExtendedSecretKey
-}
+import org.ergoplatform.wallet.secrets.{DerivationPath, EncryptedSecret, ExtendedSecretKey}
 
 trait SecretManagement[F[_]] {
 
@@ -27,7 +23,7 @@ trait SecretManagement[F[_]] {
       .fold[F[Array[Byte]]](
         e =>
           MonadError[F, Throwable].raiseError(
-            new Exception(s"Incorrect pass: ${e.getMessage}")
+            new Exception(AuthError(Option(e.getMessage)))
         ),
         r => Applicative[F].pure(r)
       )

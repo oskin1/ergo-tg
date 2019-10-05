@@ -8,6 +8,7 @@ import org.http4s.client.Client
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.iq80.leveldb.DB
 import fs2._
+import org.ergoplatform.ErgoAddressEncoder
 import pureconfig._
 import pureconfig.generic.auto._
 import zio._
@@ -19,12 +20,16 @@ object WalletApp extends CatsApp with DataBase {
 
   import scenarios._
 
-  def program: Stream[Task, Update] =
+  def run(args: List[String]): ZIO[WalletApp.Environment, Nothing, Int] =
+    program.compile.drain.fold(_ => 1, _ => 0)
+
+  private def program: Stream[Task, Update] =
     makeEnv.flatMap {
       case (settings, db, explorerClient, telegramClient) =>
         implicit val tc: TelegramClient[Task] = telegramClient
         implicit val ws: WalletService.Live[Task] =
           WalletService.Live(db, explorerClient, settings)
+        implicit val encoder: ErgoAddressEncoder =settings.addressEncoder
         Bot
           .polling[Task]
           .follow(
@@ -35,22 +40,19 @@ object WalletApp extends CatsApp with DataBase {
           )
     }
 
-  def run(args: List[String]): ZIO[WalletApp.Environment, Nothing, Int] =
-    program.compile.drain.fold(_ => 1, _ => 0)
-
   private def makeEnv =
     for {
       settings <- Stream.eval(
                     Task.effect(ConfigSource.default.loadOrThrow[Settings])
                   )
-      token <- Stream.eval(Task.effect(System.getenv("BOT_TOKEN")))
-      telegramClient <- Stream.resource[Task, TelegramClient[Task]](
-                          TelegramClient.global[Task](token)
-                        )
-      explorerClient <- Stream.resource[Task, Client[Task]](
-                          BlazeClientBuilder[Task](global).resource
-                        )
-      db <- Stream.resource[Task, DB](makeDb[Task](settings.storagePath))
-    } yield (settings, db, explorerClient, telegramClient)
+      token    <- Stream.eval(Task.effect(System.getenv("BOT_TOKEN")))
+      tgClient <- Stream.resource[Task, TelegramClient[Task]](
+                    TelegramClient.global[Task](token)
+                  )
+      client   <- Stream.resource[Task, Client[Task]](
+                    BlazeClientBuilder[Task](global).resource
+                  )
+      db       <- Stream.resource[Task, DB](makeDb[Task](settings.storagePath))
+    } yield (settings, db, client, tgClient)
 
 }

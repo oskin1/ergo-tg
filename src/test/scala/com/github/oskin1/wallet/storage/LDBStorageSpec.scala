@@ -6,7 +6,7 @@ import org.scalatest.prop.PropertyChecks
 import org.scalatest.propspec.AnyPropSpec
 import zio.interop.catz._
 
-class LDBStorageTest
+class LDBStorageSpec
   extends AnyPropSpec
     with Matchers
     with PropertyChecks
