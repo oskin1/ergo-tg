@@ -8,8 +8,11 @@ import org.ergoplatform.ErgoAddressEncoder
 
 object UserInputParser {
 
+  private def base58Chars[_: P]: P[Unit] =
+    CharIn("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
+
   private def base58String[_: P]: P[String] =
-    P(CharIn("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz").rep(2).!)
+    P(base58Chars.rep(2).!)
 
   private def posLong[_: P]: P[Long] = P(CharIn("0-9").rep(1).!.map(_.toLong))
 

@@ -34,7 +34,7 @@ trait ExplorerService[F[_]] {
     */
   def getBlockchainInfo: F[BlockchainInfo]
 
-  /** Submit transaction to the network.
+  /** Submit a transaction to the network.
     */
   def submitTransaction(tx: ErgoLikeTransaction): F[String]
 }

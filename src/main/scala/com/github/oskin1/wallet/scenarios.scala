@@ -16,6 +16,9 @@ object scenarios {
 
   private val minFeeAmount: Long = 1000000L
 
+  /** Restore from existing mnemonic phrase, associate
+    * it with a given chatId and persist it.
+    */
   def restoreWallet[F[_]: TelegramClient: Functor](
     implicit service: WalletService[F]
   ): Scenario[F, Unit] =
@@ -33,6 +36,9 @@ object scenarios {
       _ <- Scenario.eval(chat.send(wallet.verboseMsg))
     } yield ()
 
+  /** Create new wallet, associate it with a given
+    * chatId and persist it.
+    */
   def createWallet[F[_]: TelegramClient](
     implicit service: WalletService[F]
   ): Scenario[F, Unit] =
@@ -46,6 +52,8 @@ object scenarios {
       _            <- Scenario.eval(chat.send(wallet.verboseMsg))
     } yield ()
 
+  /** Create new transaction and submit it to the network.
+    */
   def createTransaction[F[_]: TelegramClient](
     implicit
     F: ApplicativeError[F, Throwable],
@@ -64,6 +72,8 @@ object scenarios {
            else Scenario.eval(chat.send("You need to create wallet first."))
     } yield ()
 
+  /** Get an aggregated balance for a given chatId from the network.
+   */
   def getBalance[F[_]: TelegramClient](
     implicit service: WalletService[F]
   ): Scenario[F, Unit] =
@@ -75,6 +85,9 @@ object scenarios {
           )
     } yield ()
 
+  /** Payment requests input handler.
+    * A retry is initiated in case a format of a user input is violated.
+    */
   private def providePayments[F[_]: TelegramClient](chat: Chat)(
     implicit encoder: ErgoAddressEncoder
   ): Scenario[F, List[PaymentRequest]] =
@@ -99,11 +112,14 @@ object scenarios {
                    )
     } yield requests
 
+  /** Fee input handler.
+    * A retry is initiated in case a format of a user input is violated.
+    */
   private def provideFee[F[_]: TelegramClient](chat: Chat): Scenario[F, Long] =
     for {
       _ <- Scenario.eval(
              chat.send(
-               "Specify fee amount. Minimum is 1000000 nanoErg."
+               s"Specify fee amount. Minimum is $minFeeAmount nanoErg."
              )
            )
       in <- Scenario.next(text)
@@ -123,6 +139,9 @@ object scenarios {
               )
     } yield fee
 
+  /** Handles transaction confirmation and submission.
+    * A retry is initiated in case wrong password is provided by user.
+    */
   private def completeTx[F[_]: TelegramClient](
     chat: Chat,
     requests: List[PaymentRequest],
@@ -160,12 +179,14 @@ object scenarios {
             id =>
               Scenario.eval(
                 chat.send(
-                  s"Your transaction was submitted to the network. ID: $id"
+                  s"Your transaction was submitted to the network.\nId: $id"
                 )
             )
           )
     } yield ()
 
+  /** Handles an input of optional mnemonic pass.
+    */
   private def enterMnemonicPass[F[_]: TelegramClient: Functor](
     chat: Chat
   ): Scenario[F, Option[String]] =
@@ -178,12 +199,15 @@ object scenarios {
           )
       msg <- Scenario.next(textMessage)
       txtOpt = if (msg.text.toLowerCase.startsWith("skip")) None
-               else Some(stripMargins(msg.text))
+               else Some(msg.text.strip)
       _ <- txtOpt.fold[Scenario[F, Unit]](Scenario.done[F])(
              _ => Scenario.eval(msg.delete.map(_ => ()))
            )
     } yield txtOpt
 
+  /** Handles password creation.
+    * A retry is initiated in case user-provided passwords don't match.
+    */
   private def providePass[F[_]: TelegramClient](
     chat: Chat
   ): Scenario[F, String] =
@@ -203,6 +227,9 @@ object scenarios {
              ) >> providePass(chat)
     } yield pass
 
+  /** Handles optional mnemonic password creation.
+    * A retry is initiated in case user-provided passwords don't match.
+    */
   private def provideMnemonicPass[F[_]: TelegramClient](
     chat: Chat
   ): Scenario[F, Option[String]] =
@@ -227,17 +254,18 @@ object scenarios {
                      Scenario.eval(
                        chat.send("Provided passwords don't match. Try again.")
                      ) >> provideMnemonicPass(chat)
-            } yield Some(stripMargins(msg.text))
+            } yield Some(msg.text.strip)
         }
       }
 
+  /** Handles an input of security critical data (such as passwords).
+    * The message with an input is deleted as soon as it is processed.
+    */
   private def enterTextSecure[F[_]: TelegramClient](
     chat: Chat
   ): Scenario[F, String] =
     for {
       message <- Scenario.next(textMessage)
       _       <- Scenario.eval(message.delete)
-    } yield stripMargins(message.text)
-
-  private def stripMargins(str: String): String = str
+    } yield message.text.strip
 }
