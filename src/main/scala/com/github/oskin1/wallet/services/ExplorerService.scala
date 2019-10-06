@@ -9,7 +9,8 @@ import com.github.oskin1.wallet.models.network.{
 }
 import com.github.oskin1.wallet.{RawAddress, Settings}
 import io.circe.Decoder
-import org.ergoplatform.{ErgoLikeTransaction, JsonCodecs}
+import org.ergoplatform.ErgoLikeTransaction
+import org.ergoplatform.wallet.serialization.JsonCodecsWrapper
 import org.http4s.circe.{jsonEncoderOf, jsonOf}
 import org.http4s.client.Client
 import org.http4s.{Method, Request, Uri}
@@ -44,8 +45,6 @@ object ExplorerService {
   final class Live[F[_]: Sync](client: Client[F], settings: Settings)
     extends ExplorerService[F] {
 
-    private val codecs = new JsonCodecs {}
-
     def getTransactionsSince(height: Int): F[List[Transaction]] =
       client.expect[List[Transaction]](
         makeGetRequest(s"${settings.explorerUrl}/transactions/since/$height")
@@ -76,7 +75,7 @@ object ExplorerService {
           Method.POST,
           Uri.unsafeFromString(s"${settings.explorerUrl}/transactions")
         ).withEntity(tx)(
-          jsonEncoderOf(Sync[F], codecs.ergoLikeTransactionEncoder)
+          jsonEncoderOf(Sync[F], JsonCodecsWrapper.ergoLikeTransactionEncoder)
         )
       )
 

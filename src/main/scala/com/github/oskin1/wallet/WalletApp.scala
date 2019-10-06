@@ -3,6 +3,7 @@ package com.github.oskin1.wallet
 import canoe.api._
 import canoe.models.Update
 import canoe.syntax._
+import cats.effect.Timer
 import cats.effect.concurrent.Ref
 import com.github.oskin1.wallet.services.WalletService
 import com.github.oskin1.wallet.storage.DataBase
@@ -21,6 +22,8 @@ import scala.concurrent.ExecutionContext.global
 object WalletApp extends CatsApp with DataBase {
 
   import scenarios._
+
+  implicit val taskTimer: Timer[Task] = implicits.ioTimer[Throwable]
 
   def run(args: List[String]): ZIO[WalletApp.Environment, Nothing, Int] =
     program.compile.drain.fold(e => {println(e); 1}, _ => 0)

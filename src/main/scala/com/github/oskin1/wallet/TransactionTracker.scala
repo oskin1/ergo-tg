@@ -3,12 +3,10 @@ package com.github.oskin1.wallet
 import canoe.api._
 import canoe.syntax._
 import canoe.models.PrivateChat
+import cats.effect.Timer
 import cats.effect.concurrent.Ref
 import cats.implicits._
-import cats.{
-  Applicative,
-  Monad
-}
+import cats.{Applicative, Monad}
 import com.github.oskin1.wallet.models.network.Transaction
 import com.github.oskin1.wallet.services.ExplorerService
 import fs2._
@@ -16,7 +14,7 @@ import fs2._
 /** Tracks unconfirmed transactions in the network
   * until they get into the blockchain.
   */
-final class TransactionTracker[F[_]: TelegramClient: Monad](
+final class TransactionTracker[F[_]: TelegramClient: Timer: Monad](
   txPoolRef: Ref[F, UtxPool],
   explorerService: ExplorerService[F],
   settings: Settings
@@ -25,6 +23,7 @@ final class TransactionTracker[F[_]: TelegramClient: Monad](
   def run: Stream[F, Unit] =
     Stream(()).repeat
       .covary[F]
+      .metered(settings.explorerPollingInterval)
       .evalMap[F, Unit] { _ =>
         findConfirmedTxs
           .flatMap {
