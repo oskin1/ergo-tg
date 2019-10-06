@@ -3,6 +3,7 @@ package com.github.oskin1.wallet
 import canoe.api._
 import canoe.models.Update
 import canoe.syntax._
+import cats.effect.concurrent.Ref
 import com.github.oskin1.wallet.services.WalletService
 import com.github.oskin1.wallet.storage.DataBase
 import fs2._
@@ -26,14 +27,15 @@ object WalletApp extends CatsApp with DataBase {
 
   private def program: Stream[Task, Update] =
     makeEnv.flatMap {
-      case (settings, db, explorerClient, telegramClient) =>
+      case (settings, db, client, telegramClient, txPool) =>
         implicit val tc: TelegramClient[Task] = telegramClient
-        implicit val ws: WalletService.Live[Task] =
-          WalletService.Live(db, explorerClient, settings)
         implicit val encoder: ErgoAddressEncoder = settings.addressEncoder
-        Bot
-          .polling[Task]
-          .follow(cancellableScenarios:_*)
+        val explorerService = new services.ExplorerService.Live[Task](client, settings)
+        implicit val ws: WalletService.Live[Task] =
+          WalletService.Live(explorerService, db, txPool, settings)
+        val txTracker = new TransactionTracker[Task](txPool, explorerService, settings)
+        val bot = Bot.polling[Task]
+        bot.follow(cancellableScenarios:_*) concurrently txTracker.run
     }
 
   private def cancellableScenarios(
@@ -62,5 +64,6 @@ object WalletApp extends CatsApp with DataBase {
                     BlazeClientBuilder[Task](global).resource
                   )
       db       <- Stream.resource[Task, DB](makeDb[Task](settings.storagePath))
-    } yield (settings, db, client, tgClient)
+      txPool   <- Stream.eval(Ref.of[Task, UtxPool](UtxPool.empty))
+    } yield (settings, db, client, tgClient, txPool)
 }

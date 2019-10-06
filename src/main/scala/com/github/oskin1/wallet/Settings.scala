@@ -7,6 +7,7 @@ final case class Settings(
   storagePath: String,
   explorerUrl: String,
   networkType: String,
+  minConfirmationsNum: Int,
   seedStrengthBits: Int,
   mnemonicPhraseLanguage: String,
   encryption: EncryptionSettings

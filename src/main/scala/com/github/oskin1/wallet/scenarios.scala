@@ -1,6 +1,6 @@
 package com.github.oskin1.wallet
 
-import canoe.api.{Scenario, _}
+import canoe.api._
 import canoe.models.Chat
 import canoe.syntax._
 import cats.implicits._

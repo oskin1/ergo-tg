@@ -5,7 +5,7 @@ import io.circe.Decoder
 
 final case class Transaction(
   id: ModifierId,
-  block: Block,
+  blockInfo: Block,
   confirmationsNum: Int
 )
 
@@ -18,5 +18,4 @@ object Transaction {
       confirmations <- c.downField("confirmationsCount").as[Int]
     } yield Transaction(id, block, confirmations)
   }
-
 }

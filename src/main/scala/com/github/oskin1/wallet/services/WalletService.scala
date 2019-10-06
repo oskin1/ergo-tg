@@ -1,8 +1,12 @@
 package com.github.oskin1.wallet.services
 
+import cats.effect.concurrent.Ref
 import cats.effect.{Async, Sync}
 import cats.implicits._
-import cats.{Applicative, MonadError}
+import cats.{
+  Applicative,
+  MonadError
+}
 import com.github.oskin1.wallet.WalletError.WalletNotFound
 import com.github.oskin1.wallet.models.network.Balance
 import com.github.oskin1.wallet.models.storage.Wallet
@@ -17,10 +21,13 @@ import com.github.oskin1.wallet.modules.{
 }
 import com.github.oskin1.wallet.repositories.WalletRepo
 import com.github.oskin1.wallet.storage.LDBStorage
-import com.github.oskin1.wallet.{repositories, services, Settings}
+import com.github.oskin1.wallet.{
+  repositories,
+  Settings,
+  UtxPool
+}
 import org.ergoplatform._
 import org.ergoplatform.wallet.secrets.ExtendedSecretKey
-import org.http4s.client.Client
 import org.iq80.leveldb.DB
 
 /** Provides actual wallet functionality.
@@ -67,6 +74,7 @@ trait WalletService[F[_]] {
 object WalletService {
 
   final class Live[F[_]: Sync](
+    utxPoolRef: Ref[F, UtxPool],
     explorerService: ExplorerService[F],
     walletRepo: WalletRepo[F],
     settings: Settings
@@ -130,12 +138,14 @@ object WalletService {
                   explorerService.getBlockchainInfo.flatMap { info =>
                     makeTransaction(inputs, requests, fee, info.height)
                       .flatMap(explorerService.submitTransaction)
+                      .flatMap { id =>
+                        utxPoolRef.update(_ add (id -> chatId)).map(_ => id)
+                      }
                   }
                 }
             }
         case None =>
-          MonadError[F, Throwable]
-            .raiseError(WalletNotFound)
+          MonadError[F, Throwable].raiseError(WalletNotFound)
       }
 
     def getBalance(chatId: Long): F[Option[Balance]] =
@@ -157,15 +167,14 @@ object WalletService {
     /** Production wallet service smart constructor.
       */
     def apply[F[_]: Async](
+      explorerService: ExplorerService[F],
       db: DB,
-      client: Client[F],
+      utxPoolRef: Ref[F, UtxPool],
       settings: Settings
     ): Live[F] = {
-      val explorerService =
-        new services.ExplorerService.Live[F](client, settings)
       val storage = new LDBStorage[F](db)
       val walletRepo = new repositories.WalletRepo.Live[F](storage)
-      new Live[F](explorerService, walletRepo, settings)
+      new Live[F](utxPoolRef, explorerService, walletRepo, settings)
     }
   }
 }

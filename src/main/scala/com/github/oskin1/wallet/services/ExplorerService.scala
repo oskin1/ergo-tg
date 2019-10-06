@@ -7,20 +7,20 @@ import com.github.oskin1.wallet.models.network.{
   Box,
   Transaction
 }
-import com.github.oskin1.wallet.{ModifierId, RawAddress, Settings}
+import com.github.oskin1.wallet.{RawAddress, Settings}
 import io.circe.Decoder
 import org.ergoplatform.{ErgoLikeTransaction, JsonCodecs}
+import org.http4s.circe.{jsonEncoderOf, jsonOf}
 import org.http4s.client.Client
 import org.http4s.{Method, Request, Uri}
-import org.http4s.circe.{jsonEncoderOf, jsonOf}
 
 /** Provides access to the Ergo network explorer.
   */
 trait ExplorerService[F[_]] {
 
-  /** Get a transaction by its id from the network if it exists.
+  /** Get new transactions since given `height` from the network.
     */
-  def getTransaction(id: ModifierId): F[Option[Transaction]]
+  def getTransactionsSince(height: Int): F[List[Transaction]]
 
   /** Get balance of the given address from the network.
     */
@@ -46,10 +46,10 @@ object ExplorerService {
 
     private val codecs = new JsonCodecs {}
 
-    def getTransaction(id: ModifierId): F[Option[Transaction]] =
-      client.expectOption[Transaction](
-        makeGetRequest(s"${settings.explorerUrl}/transactions/$id")
-      )(jsonOf(Sync[F], implicitly[Decoder[Transaction]]))
+    def getTransactionsSince(height: Int): F[List[Transaction]] =
+      client.expect[List[Transaction]](
+        makeGetRequest(s"${settings.explorerUrl}/transactions/since/$height")
+      )(jsonOf(Sync[F], implicitly[Decoder[List[Transaction]]]))
 
     def getBalance(address: String): F[Balance] =
       client.expect[Balance](
@@ -75,7 +75,9 @@ object ExplorerService {
         Request[F](
           Method.POST,
           Uri.unsafeFromString(s"${settings.explorerUrl}/transactions")
-        ).withEntity(tx)(jsonEncoderOf(Sync[F], codecs.ergoLikeTransactionEncoder))
+        ).withEntity(tx)(
+          jsonEncoderOf(Sync[F], codecs.ergoLikeTransactionEncoder)
+        )
       )
 
     private def makeGetRequest(uri: String) =

@@ -6,8 +6,12 @@ import com.github.oskin1.wallet.storage.Storage
 
 trait WalletRepo[F[_]] {
 
+  /** Persist a `wallet` associating it with a given `chatId`.
+    */
   def putWallet(chatId: Long, wallet: Wallet): F[Unit]
 
+  /** Get a wallet associated with a given `chatId` from persistent storage.
+    */
   def readWallet(chatId: Long): F[Option[Wallet]]
 }
 
@@ -21,9 +25,9 @@ object WalletRepo {
       chatId: Long,
       wallet: Wallet
     ): F[Unit] =
-      storage.putT[Long, Wallet](chatId, wallet)
+      storage.putT(chatId, wallet)
 
     def readWallet(chatId: Long): F[Option[Wallet]] =
-      storage.getT[Long, Wallet](chatId)
+      storage.getT(chatId)
   }
 }

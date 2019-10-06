@@ -3,7 +3,10 @@ package com.github.oskin1.wallet.models.network
 import com.github.oskin1.wallet.ModifierId
 import io.circe.Decoder
 
-final case class Block(id: ModifierId, height: Int)
+final case class Block(
+  id: ModifierId,
+  height: Int
+)
 
 object Block {
 
