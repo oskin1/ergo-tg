@@ -63,5 +63,4 @@ object WalletApp extends CatsApp with DataBase {
                   )
       db       <- Stream.resource[Task, DB](makeDb[Task](settings.storagePath))
     } yield (settings, db, client, tgClient)
-
 }

@@ -4,7 +4,11 @@ import canoe.api.{Scenario, _}
 import canoe.models.Chat
 import canoe.syntax._
 import cats.implicits._
-import cats.{ApplicativeError, Functor}
+import cats.{
+  ApplicativeError,
+  Functor
+}
+import com.github.oskin1.wallet.WalletError.AuthError
 import com.github.oskin1.wallet.models.PaymentRequest
 import com.github.oskin1.wallet.services.WalletService
 import org.ergoplatform.ErgoAddressEncoder
@@ -161,14 +165,14 @@ object scenarios {
           )
       pass <- enterTextSecure(chat)
       eitherId <- Scenario.eval(
-                   service
-                     .createTransaction(chat.id, pass, requests, fee)
-                     .map[Either[AuthError, String]](Right(_))
-                     .handleErrorWith {
-                       case e: AuthError => F.pure(Left(e))
-                       case e            => F.raiseError(e)
-                     }
-                 )
+                    service
+                      .createTransaction(chat.id, pass, requests, fee)
+                      .map[Either[AuthError, String]](Right(_))
+                      .handleErrorWith {
+                        case e: AuthError => F.pure(Left(e))
+                        case e            => F.raiseError(e)
+                      }
+                  )
       _ <- eitherId.fold(
             e =>
               Scenario.eval(chat.send(s"$e. Try again.")) >> completeTx(

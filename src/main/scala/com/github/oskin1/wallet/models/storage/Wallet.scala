@@ -19,6 +19,8 @@ final case class Wallet(
 
 object Wallet {
 
+  /** Restore and instantiate root wallet from a given mnemonic phrase.
+   */
   def rootWallet(
     mnemonic: String,
     pass: String,

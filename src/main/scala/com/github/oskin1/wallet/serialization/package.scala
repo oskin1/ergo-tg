@@ -4,12 +4,11 @@ import java.nio.charset.Charset
 
 import com.github.oskin1.wallet.models.storage.Wallet
 import com.google.common.base.Charsets
-import com.google.common.primitives.{Ints, Longs}
+import com.google.common.primitives.Longs
 import io.circe.generic.auto._
 import io.circe.parser._
 import io.circe.syntax._
-import org.ergoplatform.wallet.secrets
-import org.ergoplatform.wallet.secrets.EncryptedSecret
+import io.circe.{Decoder, Encoder}
 
 import scala.util.Try
 
@@ -35,32 +34,21 @@ package object serialization {
     Try(Longs.fromByteArray(xs)).fold(Left(_), Right(_))
   }
 
-  implicit val intsEncoder: BytesEncoder[Int] = Ints.toByteArray(_)
-
-  implicit val intsDecoder: BytesDecoder[Int] = { xs =>
-    Try(Ints.fromByteArray(xs)).fold(Left(_), Right(_))
-  }
-
   implicit val stringsEncoder: BytesEncoder[String] = _.getBytes(charset)
 
   implicit val stringsDecoder: BytesDecoder[String] = { xs =>
     Try(new String(xs, charset)).fold(Left(_), Right(_))
   }
 
-  implicit val secretBytesEncoder: BytesEncoder[EncryptedSecret] = {
+  implicit val walletBytesEncoder: BytesEncoder[Wallet] = encoder[Wallet]
+
+  implicit val walletBytesDecoder: BytesDecoder[Wallet] = decoder[Wallet]
+
+  private def encoder[A: Encoder]: BytesEncoder[A] =
     _.asJson.noSpaces.getBytes(charset)
-  }
 
-  implicit val secretBytesDecoder: BytesDecoder[EncryptedSecret] = { xs =>
-    decode[secrets.EncryptedSecret](new String(xs, charset))
-  }
-
-  implicit val walletBytesEncoder: BytesEncoder[Wallet] = {
-    _.asJson.noSpaces.getBytes(charset)
-  }
-
-  implicit val walletBytesDecoder: BytesDecoder[Wallet] = { xs =>
-    decode[Wallet](new String(xs, charset))
+  private def decoder[A: Decoder]: BytesDecoder[A] = { xs =>
+    decode[A](new String(xs, charset))
   }
 
   private def charset: Charset = Charsets.UTF_8

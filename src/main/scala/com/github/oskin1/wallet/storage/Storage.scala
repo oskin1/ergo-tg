@@ -2,6 +2,7 @@ package com.github.oskin1.wallet.storage
 
 import cats.{Monad, MonadError}
 import cats.implicits._
+import com.github.oskin1.wallet.serialization._
 import com.github.oskin1.wallet.serialization.{BytesDecoder, BytesEncoder}
 
 /** Basic storage layer interface.
@@ -24,7 +25,7 @@ abstract class Storage[F[_]: Monad](implicit F: MonadError[F, Throwable]) {
     ke: BytesEncoder[KT],
     ve: BytesEncoder[VT]
   ): F[Unit] =
-    put(ke(k), ve(v))
+    put(k.toBytes, v.toBytes)
 
   /** Get typed value by typed key from the storage.
     */
@@ -33,8 +34,8 @@ abstract class Storage[F[_]: Monad](implicit F: MonadError[F, Throwable]) {
     ke: BytesEncoder[KT],
     vd: BytesDecoder[VT]
   ): F[Option[VT]] =
-    get(ke(key))
-      .map(_.map(vd(_)))
+    get(key.toBytes)
+      .map(_.map(_.as[VT]))
       .flatMap {
         case Some(Right(value)) => F.pure(Some(value))
         case Some(Left(e))      => F.raiseError(e)

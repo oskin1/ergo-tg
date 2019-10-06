@@ -2,6 +2,7 @@ package com.github.oskin1.wallet.modules
 
 import cats.implicits._
 import cats.{Applicative, MonadError}
+import com.github.oskin1.wallet.WalletError.NotEnoughBoxes
 import com.github.oskin1.wallet.crypto.UnsafeMultiProver
 import com.github.oskin1.wallet.models.PaymentRequest
 import com.github.oskin1.wallet.models.network.Box
@@ -25,9 +26,9 @@ trait TransactionManagement[F[_]] {
     * @param fee      - fee amount
     */
   protected def collectOutputs(
-                                outputs: List[(Box, ExtendedSecretKey)],
-                                requests: List[PaymentRequest],
-                                fee: Long
+    outputs: List[(Box, ExtendedSecretKey)],
+    requests: List[PaymentRequest],
+    fee: Long
   )(
     implicit F: MonadError[F, Throwable]
   ): F[List[(Box, ExtendedSecretKey)]] = {
@@ -43,9 +44,7 @@ trait TransactionManagement[F[_]] {
         case _ if amtRem <= 0 =>
           Applicative[F].pure(acc)
         case _ =>
-          MonadError[F, Throwable].raiseError(
-            new Exception("Not enough boxes")
-          )
+          MonadError[F, Throwable].raiseError(NotEnoughBoxes)
       }
     loop(List.empty, outputs, requests.map(_.amount).sum + fee)
   }
@@ -58,10 +57,10 @@ trait TransactionManagement[F[_]] {
     * @param currentHeight - current blockchain height
     */
   protected def makeTransaction(
-                                 inputs: List[(Box, ExtendedSecretKey)],
-                                 requests: List[PaymentRequest],
-                                 fee: Long,
-                                 currentHeight: Int
+    inputs: List[(Box, ExtendedSecretKey)],
+    requests: List[PaymentRequest],
+    fee: Long,
+    currentHeight: Int
   )(implicit F: MonadError[F, Throwable]): F[ErgoLikeTransaction] =
     inputs
       .map {

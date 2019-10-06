@@ -3,13 +3,21 @@ package com.github.oskin1.wallet.services
 import cats.effect.{Async, Sync}
 import cats.implicits._
 import cats.{Applicative, MonadError}
+import com.github.oskin1.wallet.WalletError.WalletNotFound
 import com.github.oskin1.wallet.models.network.Balance
 import com.github.oskin1.wallet.models.storage.Wallet
-import com.github.oskin1.wallet.models.{NewWallet, PaymentRequest, RestoredWallet}
-import com.github.oskin1.wallet.modules.{SecretManagement, TransactionManagement}
+import com.github.oskin1.wallet.models.{
+  NewWallet,
+  PaymentRequest,
+  RestoredWallet
+}
+import com.github.oskin1.wallet.modules.{
+  SecretManagement,
+  TransactionManagement
+}
 import com.github.oskin1.wallet.repositories.WalletRepo
 import com.github.oskin1.wallet.storage.LDBStorage
-import com.github.oskin1.wallet.{Settings, WalletNotFound, repositories, services}
+import com.github.oskin1.wallet.{repositories, services, Settings}
 import org.ergoplatform._
 import org.ergoplatform.wallet.secrets.ExtendedSecretKey
 import org.http4s.client.Client

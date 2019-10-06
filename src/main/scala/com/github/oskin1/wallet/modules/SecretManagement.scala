@@ -1,10 +1,15 @@
 package com.github.oskin1.wallet.modules
 
 import cats.{Applicative, MonadError}
-import com.github.oskin1.wallet.{AuthError, Settings}
+import com.github.oskin1.wallet.WalletError.AuthError
+import com.github.oskin1.wallet.Settings
 import com.github.oskin1.wallet.crypto.encryption
 import org.ergoplatform.wallet.mnemonic.Mnemonic
-import org.ergoplatform.wallet.secrets.{DerivationPath, EncryptedSecret, ExtendedSecretKey}
+import org.ergoplatform.wallet.secrets.{
+  DerivationPath,
+  EncryptedSecret,
+  ExtendedSecretKey
+}
 
 trait SecretManagement[F[_]] {
 
