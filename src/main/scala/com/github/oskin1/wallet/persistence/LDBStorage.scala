@@ -1,4 +1,4 @@
-package com.github.oskin1.wallet.storage
+package com.github.oskin1.wallet.persistence
 import cats.Applicative
 import cats.effect.{Async, Resource, Sync}
 import org.iq80.leveldb.DB

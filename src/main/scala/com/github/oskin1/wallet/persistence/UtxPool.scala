@@ -1,4 +1,6 @@
-package com.github.oskin1.wallet
+package com.github.oskin1.wallet.persistence
+
+import com.github.oskin1.wallet.{ModifierId, persistence}
 
 import scala.collection.immutable.TreeSet
 
@@ -21,5 +23,5 @@ final case class UtxPool(
 
 object UtxPool {
 
-  def empty: UtxPool = UtxPool(TreeSet.empty, None)
+  def empty: UtxPool = persistence.UtxPool(TreeSet.empty, None)
 }

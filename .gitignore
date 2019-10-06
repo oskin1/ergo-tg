@@ -4,6 +4,7 @@
 .DS_Store
 
 /.idea/
+/.ergo_wallet/
 /target/
 /project/target/
 /project/project/target

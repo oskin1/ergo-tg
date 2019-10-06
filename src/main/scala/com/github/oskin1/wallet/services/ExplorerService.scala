@@ -1,13 +1,9 @@
 package com.github.oskin1.wallet.services
 
 import cats.effect.Sync
-import com.github.oskin1.wallet.models.network.{
-  Balance,
-  BlockchainInfo,
-  Box,
-  Transaction
-}
-import com.github.oskin1.wallet.{RawAddress, Settings}
+import com.github.oskin1.wallet.models.network.{Balance, BlockchainInfo, Box, Transaction}
+import com.github.oskin1.wallet.RawAddress
+import com.github.oskin1.wallet.settings.Settings
 import io.circe.Decoder
 import org.ergoplatform.ErgoLikeTransaction
 import org.ergoplatform.wallet.serialization.JsonCodecsWrapper

@@ -1,4 +1,4 @@
-package com.github.oskin1.wallet
+package com.github.oskin1.wallet.settings
 
 import org.ergoplatform.ErgoAddressEncoder
 import org.ergoplatform.wallet.settings.EncryptionSettings

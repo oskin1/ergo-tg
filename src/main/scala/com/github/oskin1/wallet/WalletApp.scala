@@ -6,7 +6,8 @@ import canoe.syntax._
 import cats.effect.Timer
 import cats.effect.concurrent.Ref
 import com.github.oskin1.wallet.services.WalletService
-import com.github.oskin1.wallet.storage.DataBase
+import com.github.oskin1.wallet.settings.Settings
+import com.github.oskin1.wallet.persistence.{DataBase, UtxPool}
 import fs2._
 import org.ergoplatform.ErgoAddressEncoder
 import org.http4s.client.Client

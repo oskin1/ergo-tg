@@ -1,16 +1,12 @@
 package com.github.oskin1.wallet.models.storage
 
 import cats.data.NonEmptyList
-import com.github.oskin1.wallet.Settings
 import com.github.oskin1.wallet.crypto.encryption
 import com.github.oskin1.wallet.models.storage
+import com.github.oskin1.wallet.settings.Settings
 import org.ergoplatform.{ErgoAddressEncoder, P2PKAddress}
 import org.ergoplatform.wallet.mnemonic.Mnemonic
-import org.ergoplatform.wallet.secrets.{
-  EncryptedSecret,
-  ExtendedSecretKey,
-  ExtendedSecretKeySerializer
-}
+import org.ergoplatform.wallet.secrets.{EncryptedSecret, ExtendedSecretKey, ExtendedSecretKeySerializer}
 
 final case class Wallet(
   secret: EncryptedSecret,

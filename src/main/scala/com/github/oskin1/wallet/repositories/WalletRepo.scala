@@ -2,7 +2,7 @@ package com.github.oskin1.wallet.repositories
 
 import cats.{Monad, MonadError}
 import com.github.oskin1.wallet.models.storage.Wallet
-import com.github.oskin1.wallet.storage.Storage
+import com.github.oskin1.wallet.persistence.Storage
 
 trait WalletRepo[F[_]] {
 

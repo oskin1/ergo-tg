@@ -1,4 +1,4 @@
-package com.github.oskin1.wallet.storage
+package com.github.oskin1.wallet.persistence
 
 import cats.implicits._
 import org.scalatest.Matchers

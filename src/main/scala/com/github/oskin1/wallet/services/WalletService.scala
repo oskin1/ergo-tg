@@ -3,29 +3,16 @@ package com.github.oskin1.wallet.services
 import cats.effect.concurrent.Ref
 import cats.effect.{Async, Sync}
 import cats.implicits._
-import cats.{
-  Applicative,
-  MonadError
-}
+import cats.{Applicative, MonadError}
 import com.github.oskin1.wallet.WalletError.WalletNotFound
 import com.github.oskin1.wallet.models.network.Balance
 import com.github.oskin1.wallet.models.storage.Wallet
-import com.github.oskin1.wallet.models.{
-  NewWallet,
-  PaymentRequest,
-  RestoredWallet
-}
-import com.github.oskin1.wallet.modules.{
-  SecretManagement,
-  TransactionManagement
-}
+import com.github.oskin1.wallet.models.{NewWallet, PaymentRequest, RestoredWallet}
+import com.github.oskin1.wallet.modules.{SecretManagement, TransactionManagement}
 import com.github.oskin1.wallet.repositories.WalletRepo
-import com.github.oskin1.wallet.storage.LDBStorage
-import com.github.oskin1.wallet.{
-  repositories,
-  Settings,
-  UtxPool
-}
+import com.github.oskin1.wallet.settings.Settings
+import com.github.oskin1.wallet.persistence.{LDBStorage, UtxPool}
+import com.github.oskin1.wallet.repositories
 import org.ergoplatform._
 import org.ergoplatform.wallet.secrets.ExtendedSecretKey
 import org.iq80.leveldb.DB

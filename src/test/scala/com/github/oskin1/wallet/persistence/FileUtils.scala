@@ -1,4 +1,4 @@
-package com.github.oskin1.wallet.storage
+package com.github.oskin1.wallet.persistence
 
 import java.io.IOException
 import java.nio.file.{FileVisitResult, Files, Path, SimpleFileVisitor}
