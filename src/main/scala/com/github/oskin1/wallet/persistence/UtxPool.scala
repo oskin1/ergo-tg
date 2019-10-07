@@ -1,6 +1,6 @@
 package com.github.oskin1.wallet.persistence
 
-import com.github.oskin1.wallet.{ModifierId, persistence}
+import com.github.oskin1.wallet.{persistence, ModifierId}
 
 import scala.collection.immutable.TreeSet
 
@@ -19,6 +19,15 @@ final case class UtxPool(
   /** Add an element to the pool
     */
   def add(elem: (ModifierId, Long)): UtxPool = this.copy(txs = txs + elem)
+
+  /** Eliminate elements satisfying a given predicate `p` from the pool.
+    */
+  def filterNot(p: ModifierId => Boolean): UtxPool =
+    this.copy(txs = txs.filterNot(x => p(x._1)))
+
+  /** Update height with a given one.
+    */
+  def setHeight(height: Int): UtxPool = this.copy(heightOpt = Some(height))
 }
 
 object UtxPool {

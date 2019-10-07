@@ -7,7 +7,7 @@ import canoe.models.messages.TelegramMessage
 import cats.effect.Timer
 import cats.effect.concurrent.Ref
 import cats.implicits._
-import cats.{Applicative, Monad}
+import cats.Monad
 import com.github.oskin1.wallet.models.network.Transaction
 import com.github.oskin1.wallet.persistence.UtxPool
 import com.github.oskin1.wallet.services.ExplorerService
@@ -45,8 +45,8 @@ final class TransactionTracker[F[_]: TelegramClient: Timer: Monad](
     PrivateChat(chatId, None, None, None)
       .send(
         s"Your transaction was confirmed.\n" +
-          s"Id: ${tx.id}\nBlockId: ${tx.blockInfo.id}\n" +
-          s"NumConfirmations: ${tx.confirmationsNum}"
+        s"Id: ${tx.id}\nBlockId: ${tx.blockInfo.id}\n" +
+        s"NumConfirmations: ${tx.confirmationsNum}"
       )
 
   /** Fetch new transactions appeared in the network recently
@@ -54,18 +54,28 @@ final class TransactionTracker[F[_]: TelegramClient: Timer: Monad](
     */
   private def findConfirmedTxs: F[List[(Transaction, Long)]] =
     for {
-      pool       <- txPoolRef.get
-      lastHeight <- pool.heightOpt.fold(
-                      explorerService.getBlockchainInfo
-                        .map(_.height)
-                    )(Applicative[F].pure(_))
-      newTxs     <- explorerService.getTransactionsSince(lastHeight)
-    } yield
-      newTxs
-        .filter(_.confirmationsNum >= settings.minConfirmationsNum)
-        .flatMap { tx =>
-          pool.txs
-            .find(_._1 == tx.id)
-            .map { case (_, chatId) => tx -> chatId }
-        }
+      pool        <- txPoolRef.get
+      networkInfo <- explorerService.getBlockchainInfo
+      lastHeight   = pool.heightOpt.getOrElse(networkInfo.height)
+      newTxs      <- explorerService.getTransactionsSince(lastHeight)
+      confirmed    = findConfirmedTxs(newTxs, pool)
+      confirmedIds = confirmed.map(_._1.id)
+      _           <- txPoolRef.update(
+                       _
+                         .filterNot(confirmedIds.contains)
+                         .setHeight(networkInfo.height)
+                     )
+    } yield confirmed
+
+  private def findConfirmedTxs(
+    txs: List[Transaction],
+    txsPool: UtxPool
+  ): List[(Transaction, Long)] =
+    txs
+      .filter(_.confirmationsNum >= settings.minConfirmationsNum)
+      .flatMap { tx =>
+        txsPool.txs
+          .find(_._1 == tx.id)
+          .map { case (_, chatId) => tx -> chatId }
+      }
 }
