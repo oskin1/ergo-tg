@@ -19,7 +19,8 @@ class WalletRepoSpec extends AnyPropSpec with Matchers with TestStorage {
     NonEmptyList(
       Account("x", DerivationPath.fromEncoded("m/1").get),
       List.empty
-    )
+    ),
+    "x"
   )
 
   def makeWalletRepo: WalletRepo[IO] =

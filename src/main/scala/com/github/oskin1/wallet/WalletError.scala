@@ -1,6 +1,6 @@
 package com.github.oskin1.wallet
 
-sealed class WalletError(code: Int, msg: String) extends Error
+sealed class WalletError(val code: Int, val msg: String) extends Error
 
 object WalletError {
 

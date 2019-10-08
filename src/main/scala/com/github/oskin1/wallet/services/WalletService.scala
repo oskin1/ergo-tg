@@ -4,11 +4,21 @@ import cats.effect.concurrent.Ref
 import cats.effect.{Async, Sync}
 import cats.implicits._
 import cats.{Applicative, MonadError}
-import com.github.oskin1.wallet.WalletError.{WalletAlreadyExists, WalletNotFound}
+import com.github.oskin1.wallet.WalletError.{
+  WalletAlreadyExists,
+  WalletNotFound
+}
 import com.github.oskin1.wallet.models.network.Balance
 import com.github.oskin1.wallet.models.storage.Wallet
-import com.github.oskin1.wallet.models.{NewWallet, PaymentRequest, RestoredWallet}
-import com.github.oskin1.wallet.modules.{SecretManagement, TransactionManagement}
+import com.github.oskin1.wallet.models.{
+  NewWallet,
+  PaymentRequest,
+  RestoredWallet
+}
+import com.github.oskin1.wallet.modules.{
+  SecretManagement,
+  TransactionManagement
+}
 import com.github.oskin1.wallet.repositories.WalletRepo
 import com.github.oskin1.wallet.settings.Settings
 import com.github.oskin1.wallet.persistence.{LDBStorage, UtxPool}
@@ -51,7 +61,7 @@ trait WalletService[F[_]] {
 
   /** Get an aggregated balance for a given chatId from the network.
     */
-  def getBalance(chatId: Long): F[Option[Balance]]
+  def getBalance(chatId: Long): F[Balance]
 
   /** Check whether a wallet associated with a given `chatId` exists.
     */
@@ -80,7 +90,8 @@ object WalletService {
     ): F[RestoredWallet] =
       exists(chatId).flatMap {
         case false =>
-          val wallet = Wallet.rootWallet(mnemonic, pass, mnemonicPassOpt)(settings)
+          val wallet =
+            Wallet.rootWallet(mnemonic, pass, mnemonicPassOpt)(settings)
           walletRepo.putWallet(chatId, wallet) *> Sync[F].delay(
             RestoredWallet(wallet.accounts.head.rawAddress)
           )
@@ -132,11 +143,15 @@ object WalletService {
                 }
                 .flatMap { inputs =>
                   explorerService.getBlockchainInfo.flatMap { info =>
-                    makeTransaction(inputs, requests, fee, info.height)
-                      .flatMap(explorerService.submitTransaction)
-                      .flatMap { id =>
-                        utxPoolRef.update(_ add (id -> chatId)).map(_ => id)
-                      }
+                    addressEncoder.fromString(wallet.changeAddress).fold(
+                      e        => MonadError[F, Throwable].raiseError(e),
+                      cAddress =>
+                        makeTransaction(inputs, requests, fee, info.height, cAddress)
+                          .flatMap(explorerService.submitTransaction)
+                          .flatMap { id =>
+                            utxPoolRef.update(_ add (id -> chatId)).map(_ => id)
+                          }
+                    )
                   }
                 }
             }
@@ -144,13 +159,14 @@ object WalletService {
           MonadError[F, Throwable].raiseError(WalletNotFound)
       }
 
-    def getBalance(chatId: Long): F[Option[Balance]] =
+    def getBalance(chatId: Long): F[Balance] =
       walletRepo.readWallet(chatId).flatMap {
-        _.fold[F[Option[Balance]]](Applicative[F].pure(None)) { wallet =>
-          wallet.accounts
-            .map(x => explorerService.getBalance(x.rawAddress))
-            .sequence
-            .map(x => Some(x.reduce[Balance](_ merge _)))
+        _.fold[F[Balance]](MonadError[F, Throwable].raiseError(WalletNotFound)) {
+          wallet =>
+            wallet.accounts
+              .map(x => explorerService.getBalance(x.rawAddress))
+              .sequence
+              .map(_.reduce[Balance](_ merge _))
         }
       }
 

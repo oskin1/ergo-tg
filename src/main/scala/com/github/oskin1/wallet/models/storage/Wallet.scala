@@ -1,6 +1,7 @@
 package com.github.oskin1.wallet.models.storage
 
 import cats.data.NonEmptyList
+import com.github.oskin1.wallet.RawAddress
 import com.github.oskin1.wallet.crypto.encryption
 import com.github.oskin1.wallet.models.storage
 import com.github.oskin1.wallet.settings.Settings
@@ -10,7 +11,8 @@ import org.ergoplatform.wallet.secrets.{EncryptedSecret, ExtendedSecretKey, Exte
 
 final case class Wallet(
   secret: EncryptedSecret,
-  accounts: NonEmptyList[Account]
+  accounts: NonEmptyList[Account],
+  changeAddress: RawAddress
 )
 
 object Wallet {
@@ -28,10 +30,11 @@ object Wallet {
       encryption.encrypt(ExtendedSecretKeySerializer.toBytes(secret), pass)(
         settings.encryption
       )
-    val rootAddress = P2PKAddress(secret.publicKey.key)
+    val rootAddress = P2PKAddress(secret.publicKey.key).toString
     storage.Wallet(
       encryptedSecret,
-      NonEmptyList(Account(rootAddress.toString(), secret.path), List.empty)
+      NonEmptyList(Account(rootAddress, secret.path), List.empty),
+      rootAddress
     )
   }
 }

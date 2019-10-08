@@ -2,12 +2,10 @@ package com.github.oskin1.wallet
 
 import canoe.api._
 import canoe.models.Chat
+import canoe.models.messages.TelegramMessage
 import canoe.syntax._
 import cats.implicits._
-import cats.{
-  ApplicativeError,
-  Functor
-}
+import cats.{ApplicativeError, Functor}
 import com.github.oskin1.wallet.WalletError.AuthError
 import com.github.oskin1.wallet.models.PaymentRequest
 import com.github.oskin1.wallet.services.WalletService
@@ -16,7 +14,7 @@ import org.ergoplatform.ErgoAddressEncoder
 object scenarios {
 
   private val willBeDeleted: String =
-    "(after you send the message it will be deleted)"
+    "(it's strongly recommended to delete your message after)"
 
   private val minFeeAmount: Long = 1000000L
 
@@ -24,36 +22,42 @@ object scenarios {
     * it with a given chatId and persist it.
     */
   def restoreWallet[F[_]: TelegramClient: Functor](
-    implicit service: WalletService[F]
+    implicit
+    F: ApplicativeError[F, Throwable],
+    service: WalletService[F]
   ): Scenario[F, Unit] =
     for {
       chat <- Scenario.start(command("restoreWallet").chat)
       _ <- Scenario.eval(
              chat.send(s"Enter your mnemonic phrase. $willBeDeleted")
            )
-      mnemonic     <- enterTextSecure(chat)
+      mnemonic     <- Scenario.next(text)
       pass         <- providePass(chat)
       mnemonicPass <- enterMnemonicPass(chat)
-      wallet <- Scenario.eval(
-                  service.restoreWallet(chat.id, mnemonic, pass, mnemonicPass)
-                )
-      _ <- Scenario.eval(chat.send(wallet.verboseMsg))
+      walletE      <- eval(service.restoreWallet(chat.id, mnemonic, pass, mnemonicPass))
+      _            <- walletE.fold(
+                        e      => msgError(e)(chat),
+                        wallet => Scenario.eval(chat.send(wallet.verboseMsg))
+                      )
     } yield ()
 
   /** Create new wallet, associate it with a given
     * chatId and persist it.
     */
   def createWallet[F[_]: TelegramClient](
-    implicit service: WalletService[F]
+    implicit
+    F: ApplicativeError[F, Throwable],
+    service: WalletService[F]
   ): Scenario[F, Unit] =
     for {
-      chat         <- Scenario.start(command("createWallet").chat)
-      pass         <- providePass(chat)
-      mnemonicPass <- provideMnemonicPass(chat)
-      wallet       <- Scenario.eval(
-                        service.createWallet(chat.id, pass, mnemonicPass)
-                      )
-      _            <- Scenario.eval(chat.send(wallet.verboseMsg))
+      chat          <- Scenario.start(command("createWallet").chat)
+      pass          <- providePass(chat)
+      mnemonicPass  <- provideMnemonicPass(chat)
+      walletE       <- eval(service.createWallet(chat.id, pass, mnemonicPass))
+      _             <- walletE.fold(
+                         e      => msgError(e)(chat),
+                         wallet => Scenario.eval(chat.send(wallet.verboseMsg))
+                       )
     } yield ()
 
   /** Create new transaction and submit it to the network.
@@ -79,14 +83,17 @@ object scenarios {
   /** Get an aggregated balance for a given chatId from the network.
    */
   def getBalance[F[_]: TelegramClient](
-    implicit service: WalletService[F]
+    implicit
+    F: ApplicativeError[F, Throwable],
+    service: WalletService[F]
   ): Scenario[F, Unit] =
     for {
       chat       <- Scenario.start(command("balance").chat)
-      balanceOpt <- Scenario.eval(service.getBalance(chat.id))
-      _ <- Scenario.eval(
-            chat.send(balanceOpt.fold("Wallet not found.")(_.verboseMsg))
-          )
+      balanceE   <- eval(service.getBalance(chat.id))
+      _          <- balanceE.fold(
+                      e       => msgError(e)(chat),
+                      balance => Scenario.eval(chat.send(balance.verboseMsg))
+                    )
     } yield ()
 
   /** Payment requests input handler.
@@ -163,23 +170,13 @@ object scenarios {
                 .mkString(",\n")
             )
           )
-      pass <- enterTextSecure(chat)
-      eitherId <- Scenario.eval(
-                    service
-                      .createTransaction(chat.id, pass, requests, fee)
-                      .map[Either[AuthError, String]](Right(_))
-                      .handleErrorWith {
-                        case e: AuthError => F.pure(Left(e))
-                        case e            => F.raiseError(e)
-                      }
-                  )
-      _ <- eitherId.fold(
-            e =>
-              Scenario.eval(chat.send(s"$e. Try again.")) >> completeTx(
-                chat,
-                requests,
-                fee
-            ),
+      pass <- Scenario.next(text)
+      idE <- eval(service.createTransaction(chat.id, pass, requests, fee))
+      _ <- idE.fold(
+            {
+              case e: AuthError => Scenario.eval(chat.send(s"$e. Try again.")) >> completeTx(chat, requests, fee)
+              case e            => msgError(e)(chat)
+            },
             id =>
               Scenario.eval(
                 chat.send(
@@ -217,13 +214,13 @@ object scenarios {
   ): Scenario[F, String] =
     for {
       _ <- Scenario.eval(
-            chat.send(
-              s"Enter a password to protect your wallet. $willBeDeleted"
-            )
-          )
-      pass      <- enterTextSecure(chat)
+             chat.send(
+               s"Enter a password to protect your wallet. $willBeDeleted"
+             )
+           )
+      pass      <- Scenario.next(text)
       _         <- Scenario.eval(chat.send("Repeat your password"))
-      reentered <- enterTextSecure(chat)
+      reentered <- Scenario.next(text)
       _ <- if (pass == reentered) Scenario.done[F]
            else
              Scenario.eval(
@@ -245,31 +242,32 @@ object scenarios {
         )
       )
       .flatMap { _ =>
-        Scenario.next(textMessage).flatMap {
-          case msg if msg.text.toLowerCase.startsWith("skip") =>
+        Scenario.next(text).flatMap {
+          case msg if msg.toLowerCase.startsWith("skip") =>
             Scenario.pure[F, Option[String]](None)
           case msg =>
             for {
-              _         <- Scenario.eval(msg.delete)
               _         <- Scenario.eval(chat.send("Repeat your password"))
-              reentered <- enterTextSecure(chat)
-              _ <- if (msg.text == reentered) Scenario.done[F]
+              reentered <- Scenario.next(text)
+              _ <- if (msg == reentered) Scenario.done[F]
                    else
                      Scenario.eval(
                        chat.send("Provided passwords don't match. Try again.")
                      ) >> provideMnemonicPass(chat)
-            } yield Some(msg.text)
+            } yield Some(msg)
         }
       }
 
-  /** Handles an input of security critical data (such as passwords).
-    * The message with an input is deleted as soon as it is processed.
-    */
-  private def enterTextSecure[F[_]: TelegramClient](
-    chat: Chat
-  ): Scenario[F, String] =
-    for {
-      message <- Scenario.next(textMessage)
-      _       <- Scenario.eval(message.delete)
-    } yield message.text
+  private def eval[F[_], A](fa: F[A])(
+    implicit F: ApplicativeError[F, Throwable]
+  ): Scenario[F, Either[Throwable, A]] =
+    Scenario.eval(fa.map[Either[Throwable, A]](Right(_)).handleError(Left(_)))
+
+  private def msgError[F[_]: TelegramClient](
+    e: Throwable
+  )(chat: Chat): Scenario[F, TelegramMessage] =
+    e match {
+      case e: WalletError => Scenario.eval(chat.send(e.msg))
+      case e              => Scenario.eval(chat.send(s"Error: ${e.getMessage}"))
+    }
 }

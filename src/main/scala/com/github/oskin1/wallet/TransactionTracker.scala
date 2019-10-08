@@ -45,7 +45,7 @@ final class TransactionTracker[F[_]: TelegramClient: Timer: Monad](
     PrivateChat(chatId, None, None, None)
       .send(
         s"Your transaction was confirmed.\n" +
-        s"Id: ${tx.id}\nBlockId: ${tx.blockInfo.id}\n" +
+        s"Id: ${tx.id}\nBlockId: ${tx.blockId}\n" +
         s"NumConfirmations: ${tx.confirmationsNum}"
       )
 

@@ -2,17 +2,12 @@ package com.github.oskin1.wallet.modules
 
 import cats.implicits._
 import cats.{Applicative, MonadError}
+import com.github.oskin1.wallet.RawAddress
 import com.github.oskin1.wallet.WalletError.NotEnoughBoxes
 import com.github.oskin1.wallet.crypto.UnsafeMultiProver
 import com.github.oskin1.wallet.models.PaymentRequest
 import com.github.oskin1.wallet.models.network.Box
-import org.ergoplatform.{
-  ErgoBoxCandidate,
-  ErgoLikeTransaction,
-  ErgoScriptPredef,
-  UnsignedErgoLikeTransaction,
-  UnsignedInput
-}
+import org.ergoplatform.{ErgoAddress, ErgoBoxCandidate, ErgoLikeTransaction, ErgoScriptPredef, UnsignedErgoLikeTransaction, UnsignedInput}
 import org.ergoplatform.wallet.secrets.ExtendedSecretKey
 import scorex.crypto.authds.ADKey
 import scorex.util.encode.Base16
@@ -60,17 +55,25 @@ trait TransactionManagement[F[_]] {
     inputs: List[(Box, ExtendedSecretKey)],
     requests: List[PaymentRequest],
     fee: Long,
-    currentHeight: Int
+    currentHeight: Int,
+    changeAddress: ErgoAddress
   )(implicit F: MonadError[F, Throwable]): F[ErgoLikeTransaction] =
     inputs
       .map {
         case (out, sk) =>
-          Base16.decode(out.id).map(id => (ADKey @@ id, sk.key))
+          Base16.decode(out.id).map(id => (ADKey @@ id, out.value, sk.key))
       }
       .sequence
       .map { decodedInputs =>
         val unsignedInputs =
           decodedInputs.map(x => new UnsignedInput(x._1)).toIndexedSeq
+        val totalInput = decodedInputs.map(_._2).sum
+        val totalOutput = requests.map(_.amount).sum
+        val changeOutput = new ErgoBoxCandidate(
+          totalInput - totalOutput - fee,
+          changeAddress.script,
+          currentHeight
+        )
         val feeOutput = new ErgoBoxCandidate(
           fee,
           ErgoScriptPredef.feeProposition(),
@@ -82,9 +85,9 @@ trait TransactionManagement[F[_]] {
         val unsignedTx = new UnsignedErgoLikeTransaction(
           unsignedInputs,
           IndexedSeq.empty,
-          outputs :+ feeOutput
+          outputs :+ feeOutput :+ changeOutput
         )
-        UnsafeMultiProver.prove(unsignedTx, decodedInputs)
+        UnsafeMultiProver.prove(unsignedTx, decodedInputs.map(x => x._1 -> x._3))
       }
       .fold[F[ErgoLikeTransaction]](
         e => MonadError[F, Throwable].raiseError(e),

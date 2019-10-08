@@ -1,6 +1,6 @@
 name := "ergo-tg"
 
-version := "0.0.1"
+version := "0.1.0"
 
 organization := "com.github.oskin1"
 
@@ -47,12 +47,15 @@ scalacOptions ++= Seq(
   "-Ypartial-unification"
 )
 
+mainClass in assembly := Some("com.github.oskin1.wallet.WalletApp")
+
 test in assembly := {}
 
 assemblyJarName in assembly := s"${name.value}-${version.value}.jar"
 
 assemblyMergeStrategy in assembly := {
-  case "logback.xml"       => MergeStrategy.first
-  case "module-info.class" => MergeStrategy.discard
-  case other               => (assemblyMergeStrategy in assembly).value(other)
+  case "logback.xml"                               => MergeStrategy.first
+  case "module-info.class"                         => MergeStrategy.discard
+  case PathList("org", "iq80", "leveldb", xs @ _*) => MergeStrategy.first
+  case other                                       => (assemblyMergeStrategy in assembly).value(other)
 }
