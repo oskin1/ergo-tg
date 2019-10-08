@@ -14,7 +14,7 @@ import org.ergoplatform.ErgoAddressEncoder
 object scenarios {
 
   private val willBeDeleted: String =
-    "(it's strongly recommended to delete your message after)"
+    "(the message will be deleted as you send it)"
 
   private val minFeeAmount: Long = 1000000L
 
@@ -31,7 +31,7 @@ object scenarios {
       _ <- Scenario.eval(
              chat.send(s"Enter your mnemonic phrase. $willBeDeleted")
            )
-      mnemonic     <- Scenario.next(text)
+      mnemonic     <- enterTextSecure(chat)
       pass         <- providePass(chat)
       mnemonicPass <- enterMnemonicPass(chat)
       walletE      <- eval(service.restoreWallet(chat.id, mnemonic, pass, mnemonicPass))
@@ -81,7 +81,7 @@ object scenarios {
     } yield ()
 
   /** Get an aggregated balance for a given chatId from the network.
-   */
+    */
   def getBalance[F[_]: TelegramClient](
     implicit
     F: ApplicativeError[F, Throwable],
@@ -170,20 +170,20 @@ object scenarios {
                 .mkString(",\n")
             )
           )
-      pass <- Scenario.next(text)
-      idE <- eval(service.createTransaction(chat.id, pass, requests, fee))
-      _ <- idE.fold(
-            {
-              case e: AuthError => Scenario.eval(chat.send(s"$e. Try again.")) >> completeTx(chat, requests, fee)
-              case e            => msgError(e)(chat)
-            },
-            id =>
-              Scenario.eval(
-                chat.send(
-                  s"Your transaction was submitted to the network.\nId: $id"
-                )
-            )
-          )
+      pass <- enterTextSecure(chat)
+      idE  <- eval(service.createTransaction(chat.id, pass, requests, fee))
+      _ <- idE match {
+             case Left(e: AuthError) =>
+               Scenario.eval(chat.send(s"$e. Try again.")) >> completeTx(chat, requests, fee)
+             case Left(e) =>
+               msgError(e)(chat)
+             case Right(id) =>
+               Scenario.eval(
+                 chat.send(
+                   s"Your transaction was submitted to the network.\nId: $id"
+                 )
+               )
+           }
     } yield ()
 
   /** Handles an input of optional mnemonic pass.
@@ -218,9 +218,9 @@ object scenarios {
                s"Enter a password to protect your wallet. $willBeDeleted"
              )
            )
-      pass      <- Scenario.next(text)
+      pass      <- enterTextSecure(chat)
       _         <- Scenario.eval(chat.send("Repeat your password"))
-      reentered <- Scenario.next(text)
+      reentered <- enterTextSecure(chat)
       _ <- if (pass == reentered) Scenario.done[F]
            else
              Scenario.eval(
@@ -257,6 +257,17 @@ object scenarios {
             } yield Some(msg)
         }
       }
+
+  /** Handles an input of security critical data (such as passwords).
+    * The message with an input is deleted as soon as it is processed.
+    */
+  private def enterTextSecure[F[_]: TelegramClient](
+    chat: Chat
+  ): Scenario[F, String] =
+    for {
+      message <- Scenario.next(textMessage)
+      _       <- Scenario.eval(message.delete)
+    } yield message.text
 
   private def eval[F[_], A](fa: F[A])(
     implicit F: ApplicativeError[F, Throwable]
