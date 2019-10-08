@@ -5,12 +5,8 @@ import java.io.File
 import cats.effect.IO
 import org.iq80.leveldb.Options
 import org.scalacheck.Gen
-import zio.interop.catz._
-import zio.{DefaultRuntime, Task}
 
-trait StorageSpecs {
-
-  val runtime: DefaultRuntime = new DefaultRuntime {}
+trait StorageSpec {
 
   def testPairsGen: Gen[List[(Array[Byte], Array[Byte])]] =
     for {
@@ -25,14 +21,14 @@ trait StorageSpecs {
   def toString(xs: Array[Byte]): String =
     org.iq80.leveldb.impl.Iq80DBFactory.asString(xs)
 
-  def withDb(fn: LDBStorage[Task] => Unit): Unit =
-    fn(createDb(FileUtils.createTempDir.getAbsolutePath))
+  def withRealDb(fn: LDBStorage[IO] => Unit): Unit =
+    fn(createRealDb(FileUtils.createTempDir.getAbsolutePath))
 
-  def createDb(path: String): LDBStorage[Task] = {
+  def createRealDb(path: String): LDBStorage[IO] = {
     val dir = new File(path); dir.mkdirs()
     val options = new Options(); options.createIfMissing(true)
     val db = new LDBFactory {}.loadFactory[IO].unsafeRunSync().open(dir, options)
-    new LDBStorage[Task](db)
+    new LDBStorage[IO](db)
   }
 
 }

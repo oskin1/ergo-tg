@@ -203,7 +203,7 @@ object scenarios {
           )
       msg <- Scenario.next(textMessage)
       txtOpt = if (msg.text.toLowerCase.startsWith("skip")) None
-               else Some(msg.text.strip)
+               else Some(msg.text)
       _ <- txtOpt.fold[Scenario[F, Unit]](Scenario.done[F])(
              _ => Scenario.eval(msg.delete.map(_ => ()))
            )
@@ -258,7 +258,7 @@ object scenarios {
                      Scenario.eval(
                        chat.send("Provided passwords don't match. Try again.")
                      ) >> provideMnemonicPass(chat)
-            } yield Some(msg.text.strip)
+            } yield Some(msg.text)
         }
       }
 
@@ -271,5 +271,5 @@ object scenarios {
     for {
       message <- Scenario.next(textMessage)
       _       <- Scenario.eval(message.delete)
-    } yield message.text.strip
+    } yield message.text
 }

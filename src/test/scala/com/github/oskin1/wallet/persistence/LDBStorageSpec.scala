@@ -10,19 +10,18 @@ class LDBStorageSpec
   extends AnyPropSpec
     with Matchers
     with PropertyChecks
-    with StorageSpecs {
+    with StorageSpec {
 
   property("put/get") {
-    withDb { db =>
+    withRealDb { db =>
       val valueA = (toBytes("A"), toBytes("1"))
       val valueB = (toBytes("B"), toBytes("2"))
       val values = List(valueA, valueB)
 
-      runtime.unsafeRun(db.put(values))
+      db.put(values).unsafeRunSync()
 
-      runtime.unsafeRun(
-        values.map(_._1).map(db.get).sequence).map(_.map(toString)
-      ) should contain theSameElementsAs values.map(x => Some(toString(x._2)))
+      values.map(_._1).map(db.get).sequence.unsafeRunSync()
+        .map(_.map(toString)) should contain theSameElementsAs values.map(x => Some(toString(x._2)))
     }
   }
 

@@ -29,12 +29,12 @@ abstract class Storage[F[_]: Monad](implicit F: MonadError[F, Throwable]) {
 
   /** Get typed value by typed key from the storage.
     */
-  final def getT[KT, VT](key: KT)(
+  final def getT[KT, VT](k: KT)(
     implicit
     ke: BytesEncoder[KT],
     vd: BytesDecoder[VT]
   ): F[Option[VT]] =
-    get(key.toBytes)
+    get(k.toBytes)
       .map(_.map(_.as[VT]))
       .flatMap {
         case Some(Right(value)) => F.pure(Some(value))
