@@ -4,7 +4,7 @@ import cats.effect.concurrent.Ref
 import cats.effect.{Async, Sync}
 import cats.implicits._
 import cats.{Applicative, MonadError}
-import com.github.oskin1.wallet.WalletError.WalletNotFound
+import com.github.oskin1.wallet.WalletError.{WalletAlreadyExists, WalletNotFound}
 import com.github.oskin1.wallet.models.network.Balance
 import com.github.oskin1.wallet.models.storage.Wallet
 import com.github.oskin1.wallet.models.{NewWallet, PaymentRequest, RestoredWallet}
@@ -77,26 +77,35 @@ object WalletService {
       mnemonic: String,
       pass: String,
       mnemonicPassOpt: Option[String],
-    ): F[RestoredWallet] = {
-      val wallet = Wallet.rootWallet(mnemonic, pass, mnemonicPassOpt)(settings)
-      walletRepo.putWallet(chatId, wallet) *> Sync[F].delay(
-        RestoredWallet(wallet.accounts.head.rawAddress)
-      )
-    }
+    ): F[RestoredWallet] =
+      exists(chatId).flatMap {
+        case false =>
+          val wallet = Wallet.rootWallet(mnemonic, pass, mnemonicPassOpt)(settings)
+          walletRepo.putWallet(chatId, wallet) *> Sync[F].delay(
+            RestoredWallet(wallet.accounts.head.rawAddress)
+          )
+        case true =>
+          MonadError[F, Throwable].raiseError(WalletAlreadyExists)
+      }
 
     def createWallet(
       chatId: Long,
       pass: String,
       mnemonicPassOpt: Option[String]
     ): F[NewWallet] =
-      generateMnemonic(settings)
-        .flatMap { mnemonic =>
-          val wallet =
-            Wallet.rootWallet(mnemonic, pass, mnemonicPassOpt)(settings)
-          walletRepo.putWallet(chatId, wallet) *> Sync[F].delay(
-            NewWallet(wallet.accounts.head.rawAddress, mnemonic)
-          )
-        }
+      exists(chatId).flatMap {
+        case false =>
+          generateMnemonic(settings)
+            .flatMap { mnemonic =>
+              val wallet =
+                Wallet.rootWallet(mnemonic, pass, mnemonicPassOpt)(settings)
+              walletRepo.putWallet(chatId, wallet) *> Sync[F].delay(
+                NewWallet(wallet.accounts.head.rawAddress, mnemonic)
+              )
+            }
+        case true =>
+          MonadError[F, Throwable].raiseError(WalletAlreadyExists)
+      }
 
     def createTransaction(
       chatId: Long,
