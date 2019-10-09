@@ -14,5 +14,5 @@ Any operations requiring private key access must be authorized by user entering 
  
 ### Screenshots
 
-<img src="https://raw.githubusercontent.com/oskin1/static-data/master/img/wallet_screen_0.png" align="center" width="30%"/>
-<img src="https://raw.githubusercontent.com/oskin1/static-data/master/img/wallet_screen_1.png" align="center" width="30%"/>
+<img src="https://raw.githubusercontent.com/oskin1/static-data/master/img/wallet_screen_0.png" align="left" width="30%"/>
+<img src="https://raw.githubusercontent.com/oskin1/static-data/master/img/wallet_screen_1.png" align="left" width="30%"/>
