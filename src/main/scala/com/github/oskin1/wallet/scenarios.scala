@@ -86,6 +86,24 @@ object scenarios {
                       )
     } yield ()
 
+  /** Delete wallet from service.
+    */
+  def deleteWallet[F[_]: TelegramClient](
+    implicit
+    F: ApplicativeError[F, Throwable],
+    service: WalletService[F]
+  ): Scenario[F, Unit] =
+    for {
+      chat    <- Scenario.start(command("delete_wallet").chat)
+      _       <- Scenario.eval(chat.send("Enter your password to *confirm* wallet deletion"))
+      pass    <- enterTextSecure(chat)
+      resultE <- eval(service.deleteWallet(chat.id, pass))
+      _       <- resultE.fold(
+                   e => msgError(e)(chat),
+                   _ => Scenario.eval(chat.send("Your wallet was deleted"))
+                 )
+    } yield ()
+
   /** Create new transaction and submit it to the network.
     */
   def createTransaction[F[_]: TelegramClient](

@@ -98,4 +98,16 @@ class WalletServiceSpec
     ws.createWallet(chatId, pass, Some(mnemonicPass)).unsafeRunSync()
     ws.exists(chatId).unsafeRunSync() shouldBe true
   }
+
+  property("delete wallet") {
+    val ws = makeWalletService
+
+    ws.createWallet(chatId, pass).unsafeRunSync()
+    ws.exists(chatId).unsafeRunSync() shouldBe true
+
+    Try(ws.deleteWallet(chatId, "wrong_pass").unsafeRunSync()) shouldBe 'failure
+
+    ws.deleteWallet(chatId, pass).unsafeRunSync()
+    ws.exists(chatId).unsafeRunSync() shouldBe false
+  }
 }

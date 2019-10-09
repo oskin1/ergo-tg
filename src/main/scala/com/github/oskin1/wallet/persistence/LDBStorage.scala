@@ -24,4 +24,8 @@ final class LDBStorage[F[_]: Async](db: DB) extends Storage[F] {
                  cb(Try(db.write(batch)).fold(Left(_), res => Right(Option(res))))
                })
     } yield ()).use(_ => Applicative[F].unit)
+
+  def delete(key: K): F[Unit] = Async[F].async { cb =>
+    cb(Try(db.delete(key)).fold(Left(_), _ => Right(())))
+  }
 }

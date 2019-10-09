@@ -51,6 +51,7 @@ object WalletApp extends CatsApp with DataBase {
     Seq(
       restoreWallet,
       createWallet,
+      deleteWallet,
       createTransaction,
       getBalance
     ).map(_.cancelWhen(command("cancel")))

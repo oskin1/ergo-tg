@@ -4,15 +4,15 @@ import cats.MonadError
 import cats.effect.concurrent.Ref
 import cats.effect.{Async, Sync}
 import cats.implicits._
-import com.github.oskin1.wallet.WalletError.{WalletAlreadyExists, WalletNotFound}
+import com.github.oskin1.wallet.WalletError.WalletNotFound
 import com.github.oskin1.wallet.models.network.Balance
 import com.github.oskin1.wallet.models.storage.Wallet
 import com.github.oskin1.wallet.models.{NewWallet, PaymentRequest, RestoredWallet}
 import com.github.oskin1.wallet.modules.{SecretManagement, TransactionManagement}
 import com.github.oskin1.wallet.persistence.{LDBStorage, UtxPool}
-import com.github.oskin1.wallet.{ModifierId, repositories}
 import com.github.oskin1.wallet.repositories.WalletRepo
 import com.github.oskin1.wallet.settings.Settings
+import com.github.oskin1.wallet.{repositories, ModifierId}
 import org.ergoplatform._
 import org.ergoplatform.wallet.secrets.ExtendedSecretKey
 import org.iq80.leveldb.DB
@@ -39,6 +39,13 @@ trait WalletService[F[_]] {
     pass: String,
     mnemonicPassOpt: Option[String] = None
   ): F[NewWallet]
+
+  /** Delete a wallet associated with a given chatId.
+    */
+  def deleteWallet(
+    chatId: Long,
+    pass: String
+  ): F[Unit]
 
   /** Create new transaction and submit it to the network.
     */
@@ -99,56 +106,60 @@ object WalletService {
           )
         }
 
+    def deleteWallet(
+      chatId: Long,
+      pass: String
+    ): F[Unit] =
+      withWallet(chatId) { wallet =>
+        decryptSecret(wallet.secret, pass).flatMap { _ =>
+          walletRepo.deleteWallet(chatId)
+        }
+      }
+
     def createTransaction(
       chatId: Long,
       pass: String,
       requests: List[PaymentRequest],
       fee: Long
     ): F[String] =
-      walletRepo.readWallet(chatId).flatMap {
-        case Some(wallet) =>
-          decryptSecret(wallet.secret, pass)
-            .flatMap { seed =>
-              val rootSk = ExtendedSecretKey.deriveMasterKey(seed)
-              wallet.accounts
-                .map { account =>
-                  explorerService
-                    .getUnspentOutputs(account.rawAddress)
-                    .map {
-                      _.map(_ -> deriveKey(rootSk, account.derivationPath))
-                    }
-                }
-                .sequence
-                .flatMap { outputs =>
-                  collectOutputs(outputs.toList.flatten, requests, fee)
-                }
-                .flatMap { inputs =>
-                  explorerService.getBlockchainInfo.flatMap { info =>
-                    addressEncoder
-                      .fromString(wallet.changeAddress)
-                      .fold(
-                        e => MonadError[F, Throwable].raiseError(e),
-                        changeAddr =>
-                          makeTransaction(inputs, requests, fee, info.height, changeAddr)
-                            .flatMap(explorerService.submitTransaction)
-                            .flatMap(id => addToUtxPool(id, chatId).map(_ => id))
-                      )
+      withWallet(chatId) { wallet =>
+        decryptSecret(wallet.secret, pass)
+          .flatMap { seed =>
+            val rootSk = ExtendedSecretKey.deriveMasterKey(seed)
+            wallet.accounts
+              .map { account =>
+                explorerService
+                  .getUnspentOutputs(account.rawAddress)
+                  .map {
+                    _.map(_ -> deriveKey(rootSk, account.derivationPath))
                   }
+              }
+              .sequence
+              .flatMap { outputs =>
+                collectOutputs(outputs.toList.flatten, requests, fee)
+              }
+              .flatMap { inputs =>
+                explorerService.getBlockchainInfo.flatMap { info =>
+                  addressEncoder
+                    .fromString(wallet.changeAddress)
+                    .fold(
+                      e => MonadError[F, Throwable].raiseError(e),
+                      changeAddr =>
+                        makeTransaction(inputs, requests, fee, info.height, changeAddr)
+                          .flatMap(explorerService.submitTransaction)
+                          .flatMap(id => addToUtxPool(id, chatId).map(_ => id))
+                    )
                 }
-            }
-        case None =>
-          MonadError[F, Throwable].raiseError(WalletNotFound)
+              }
+          }
       }
 
     def getBalance(chatId: Long): F[Balance] =
-      walletRepo.readWallet(chatId).flatMap {
-        _.fold[F[Balance]](MonadError[F, Throwable].raiseError(WalletNotFound)) {
-          wallet =>
-            wallet.accounts
-              .map(x => explorerService.getBalance(x.rawAddress))
-              .sequence
-              .map(_.reduce[Balance](_ merge _))
-        }
+      withWallet(chatId) { wallet =>
+        wallet.accounts
+          .map(x => explorerService.getBalance(x.rawAddress))
+          .sequence
+          .map(_.reduce[Balance](_ merge _))
       }
 
     def exists(chatId: Long): F[Boolean] =
@@ -156,6 +167,13 @@ object WalletService {
 
     private def addToUtxPool(id: ModifierId, chatId: Long): F[Unit] =
       utxPoolRef.update(_ add (id -> chatId))
+
+    private def withWallet[A](chatId: Long)(f: Wallet => F[A]): F[A] =
+      walletRepo
+        .readWallet(chatId)
+        .flatMap {
+          _.fold[F[A]](MonadError[F, Throwable].raiseError(WalletNotFound))(f)
+        }
   }
 
   object Live {

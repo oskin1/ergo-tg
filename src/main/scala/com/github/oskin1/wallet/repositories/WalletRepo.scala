@@ -13,6 +13,10 @@ trait WalletRepo[F[_]] {
   /** Get a wallet associated with a given `chatId` from persistent storage.
     */
   def readWallet(chatId: Long): F[Option[Wallet]]
+
+  /** Delete a wallet associated with a given chatId.
+    */
+  def deleteWallet(chatId: Long): F[Unit]
 }
 
 object WalletRepo {
@@ -29,5 +33,8 @@ object WalletRepo {
 
     def readWallet(chatId: Long): F[Option[Wallet]] =
       storage.getT(chatId)
+
+    def deleteWallet(chatId: Long): F[Unit] =
+      storage.deleteT(chatId)
   }
 }
