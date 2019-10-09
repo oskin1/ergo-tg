@@ -11,8 +11,8 @@ final case class Balance(confirmedBalance: Long, totalBalance: Long) {
     )
 
   def verboseMsg: String =
-    s"Confirmed balance is: $confirmedBalance nanoErg" +
-    s"\n Total balance is: $totalBalance nanoErg."
+    s"Confirmed balance is:\n`$confirmedBalance` nanoErg\n" +
+    s"Total balance is (incl. unconfirmed txs):\n`$totalBalance` nanoErg."
 }
 
 object Balance {
