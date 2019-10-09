@@ -1,6 +1,6 @@
 name := "ergo-tg"
 
-version := "0.1.0"
+version := "1.0.0"
 
 organization := "com.github.oskin1"
 
@@ -13,7 +13,7 @@ resolvers ++= Seq(
   "Typesafe maven releases" at "http://repo.typesafe.com/typesafe/maven-releases/"
 )
 
-val ergoWalletVersion = "key-serialization-9dee6be9-SNAPSHOT"
+val ergoWalletVersion = "master-83d10111-SNAPSHOT"
 
 libraryDependencies ++= Seq(
   "org.ergoplatform"      %% "ergo-wallet"      % ergoWalletVersion,
