@@ -168,4 +168,8 @@ object JsonCodecs {
         "outputs"    -> tx.outputs.asJson
       )
   }
+
+  val txIdDecoder: Decoder[String] = { c =>
+    c.downField("id").as[String].map(_.stripPrefix("\"").stripSuffix("\""))
+  }
 }

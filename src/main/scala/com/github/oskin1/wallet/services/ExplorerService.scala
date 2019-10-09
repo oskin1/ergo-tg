@@ -8,13 +8,14 @@ import com.github.oskin1.wallet.models.network.{
   Box,
   Transaction
 }
+import com.github.oskin1.wallet.serialization.JsonCodecs
 import com.github.oskin1.wallet.settings.Settings
-import io.circe.Decoder
+import io.circe.{Decoder, Printer}
 import org.ergoplatform.ErgoLikeTransaction
-import org.ergoplatform.wallet.serialization.JsonCodecsWrapper
 import org.http4s.circe.{jsonEncoderOf, jsonOf}
 import org.http4s.client.Client
-import org.http4s.{Method, Request, Uri}
+import org.http4s.headers.`Content-Type`
+import org.http4s.{MediaType, Method, Request, Uri}
 
 /** Provides access to the Ergo network explorer.
   */
@@ -76,9 +77,9 @@ object ExplorerService {
           Method.POST,
           Uri.unsafeFromString(s"${settings.explorerUrl}/transactions")
         ).withEntity(tx)(
-          jsonEncoderOf(Sync[F], JsonCodecsWrapper.ergoLikeTransactionEncoder)
+          jsonEncoderOf(Sync[F], JsonCodecs.ergoLikeTransactionEncoder)
         )
-      )
+      )(jsonOf(Sync[F], JsonCodecs.txIdDecoder))
 
     private def makeGetRequest(uri: String) =
       Request[F](Method.GET, Uri.unsafeFromString(uri))

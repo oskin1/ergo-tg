@@ -2,17 +2,19 @@ package com.github.oskin1.wallet.modules
 
 import cats.implicits._
 import cats.{Applicative, MonadError}
-import com.github.oskin1.wallet.RawAddress
 import com.github.oskin1.wallet.WalletError.NotEnoughBoxes
 import com.github.oskin1.wallet.crypto.UnsafeMultiProver
 import com.github.oskin1.wallet.models.PaymentRequest
 import com.github.oskin1.wallet.models.network.Box
-import org.ergoplatform.{ErgoAddress, ErgoBoxCandidate, ErgoLikeTransaction, ErgoScriptPredef, UnsignedErgoLikeTransaction, UnsignedInput}
 import org.ergoplatform.wallet.secrets.ExtendedSecretKey
+import org.ergoplatform._
 import scorex.crypto.authds.ADKey
 import scorex.util.encode.Base16
+import sigmastate.basics.DLogProtocol.DLogProverInput
 
 trait TransactionManagement[F[_]] {
+
+  private case class DecodedBox(id: ADKey, value: Long, sk: DLogProverInput)
 
   /** Take a number of outputs corresponding to a given requests and fee.
     *
@@ -50,6 +52,7 @@ trait TransactionManagement[F[_]] {
     * @param requests      - transaction requests
     * @param fee           - fee amount
     * @param currentHeight - current blockchain height
+   *  @param changeAddress - address to send change back
     */
   protected def makeTransaction(
     inputs: List[(Box, ExtendedSecretKey)],
@@ -61,13 +64,13 @@ trait TransactionManagement[F[_]] {
     inputs
       .map {
         case (out, sk) =>
-          Base16.decode(out.id).map(id => (ADKey @@ id, out.value, sk.key))
+          Base16.decode(out.id).map(id => DecodedBox(ADKey @@ id, out.value, sk.key))
       }
       .sequence
       .map { decodedInputs =>
         val unsignedInputs =
-          decodedInputs.map(x => new UnsignedInput(x._1)).toIndexedSeq
-        val totalInput = decodedInputs.map(_._2).sum
+          decodedInputs.map(x => new UnsignedInput(x.id)).toIndexedSeq
+        val totalInput = decodedInputs.map(_.value).sum
         val totalOutput = requests.map(_.amount).sum
         val changeOutput = new ErgoBoxCandidate(
           totalInput - totalOutput - fee,
@@ -87,7 +90,7 @@ trait TransactionManagement[F[_]] {
           IndexedSeq.empty,
           outputs :+ feeOutput :+ changeOutput
         )
-        UnsafeMultiProver.prove(unsignedTx, decodedInputs.map(x => x._1 -> x._3))
+        UnsafeMultiProver.prove(unsignedTx, decodedInputs.map(x => x.id -> x.sk))
       }
       .fold[F[ErgoLikeTransaction]](
         e => MonadError[F, Throwable].raiseError(e),

@@ -1,9 +1,9 @@
 package com.github.oskin1.wallet.services
 
+import cats.MonadError
 import cats.effect.concurrent.Ref
 import cats.effect.{Async, Sync}
 import cats.implicits._
-import cats.{Applicative, MonadError}
 import com.github.oskin1.wallet.WalletError.{
   WalletAlreadyExists,
   WalletNotFound
@@ -19,10 +19,10 @@ import com.github.oskin1.wallet.modules.{
   SecretManagement,
   TransactionManagement
 }
-import com.github.oskin1.wallet.repositories.WalletRepo
-import com.github.oskin1.wallet.settings.Settings
 import com.github.oskin1.wallet.persistence.{LDBStorage, UtxPool}
 import com.github.oskin1.wallet.repositories
+import com.github.oskin1.wallet.repositories.WalletRepo
+import com.github.oskin1.wallet.settings.Settings
 import org.ergoplatform._
 import org.ergoplatform.wallet.secrets.ExtendedSecretKey
 import org.iq80.leveldb.DB
@@ -143,15 +143,19 @@ object WalletService {
                 }
                 .flatMap { inputs =>
                   explorerService.getBlockchainInfo.flatMap { info =>
-                    addressEncoder.fromString(wallet.changeAddress).fold(
-                      e        => MonadError[F, Throwable].raiseError(e),
-                      cAddress =>
-                        makeTransaction(inputs, requests, fee, info.height, cAddress)
-                          .flatMap(explorerService.submitTransaction)
-                          .flatMap { id =>
-                            utxPoolRef.update(_ add (id -> chatId)).map(_ => id)
+                    addressEncoder
+                      .fromString(wallet.changeAddress)
+                      .fold(
+                        e => MonadError[F, Throwable].raiseError(e),
+                        changeAddr =>
+                          makeTransaction(inputs, requests, fee, info.height, changeAddr)
+                            .flatMap(explorerService.submitTransaction)
+                            .flatMap { id =>
+                              utxPoolRef
+                                .update(_ add (id -> chatId))
+                                .map(_ => id)
                           }
-                    )
+                      )
                   }
                 }
             }

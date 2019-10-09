@@ -24,7 +24,7 @@ trait SecretManagement[F[_]] {
       .fold[F[Array[Byte]]](
         e =>
           MonadError[F, Throwable].raiseError(
-            new Exception(AuthError(Option(e.getMessage)))
+            AuthError(Option(e.getMessage))
         ),
         r => Applicative[F].pure(r)
       )
