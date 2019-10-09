@@ -39,6 +39,7 @@ scalacOptions ++= Seq(
   "-language:experimental.macros",
   "-language:higherKinds",
   "-language:postfixOps",
+  "-language:implicitConversions",
   "-feature",
   "-unchecked",
   "-Xfuture",

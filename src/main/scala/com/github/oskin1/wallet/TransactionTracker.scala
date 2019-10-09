@@ -36,7 +36,7 @@ final class TransactionTracker[F[_]: TelegramClient: Timer: Sync](
             _.map { case (tx, chatId) => notify(chatId, tx) }.sequence
           }
           .map(_ => ())
-          .handleErrorWith(e => Sync[F].delay(log.error(e)))
+          .handleErrorWith(e => Sync[F].delay(log.error(e)(e.getMessage)))
       }
 
   /** Notify wallet holder associated with a given `chatId`

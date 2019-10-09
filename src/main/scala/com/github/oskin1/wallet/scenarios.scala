@@ -1,8 +1,9 @@
 package com.github.oskin1.wallet
 
 import canoe.api._
-import canoe.models.Chat
+import canoe.models.{Chat, ParseMode}
 import canoe.models.messages.TelegramMessage
+import canoe.models.outgoing.TextContent
 import canoe.syntax._
 import cats.implicits._
 import cats.{ApplicativeError, Functor}
@@ -14,9 +15,12 @@ import org.ergoplatform.ErgoAddressEncoder
 object scenarios {
 
   private val willBeDeleted: String =
-    "(the message will be deleted as you send it)"
+    "_(the message will be deleted as you send it)_"
 
   private val minFeeAmount: Long = 1000000L
+
+  private implicit def textContent(text: String): TextContent =
+    TextContent(text, Some(ParseMode.Markdown))
 
   /** Restore from existing mnemonic phrase, associate
     * it with a given chatId and persist it.
@@ -27,10 +31,21 @@ object scenarios {
     service: WalletService[F]
   ): Scenario[F, Unit] =
     for {
-      chat <- Scenario.start(command("restoreWallet").chat)
-      _ <- Scenario.eval(
-             chat.send(s"Enter your mnemonic phrase. $willBeDeleted")
-           )
+      chat   <- Scenario.start(command("restore_wallet").chat)
+      exists <- Scenario.eval(service.exists(chat.id))
+      _      <- if (exists) Scenario.eval(chat.send("Wallet already exists."))
+                else completeRestore(chat)
+    } yield ()
+
+  private def completeRestore[F[_]: TelegramClient: Functor](chat: Chat)(
+    implicit
+    F: ApplicativeError[F, Throwable],
+    service: WalletService[F]
+  ): Scenario[F, Unit] =
+    for {
+      _            <- Scenario.eval(
+                        chat.send(s"Enter your mnemonic phrase.\n$willBeDeleted")
+                      )
       mnemonic     <- enterTextSecure(chat)
       pass         <- providePass(chat)
       mnemonicPass <- enterMnemonicPass(chat)
@@ -45,19 +60,30 @@ object scenarios {
     * chatId and persist it.
     */
   def createWallet[F[_]: TelegramClient](
+  implicit
+  F: ApplicativeError[F, Throwable],
+  service: WalletService[F]
+  ): Scenario[F, Unit] =
+    for {
+      chat   <- Scenario.start(command("create_wallet").chat)
+      exists <- Scenario.eval(service.exists(chat.id))
+      _      <- if (exists) Scenario.eval(chat.send("Wallet already exists."))
+                else completeCreate(chat)
+    } yield ()
+
+  private def completeCreate[F[_]: TelegramClient](chat: Chat)(
     implicit
     F: ApplicativeError[F, Throwable],
     service: WalletService[F]
   ): Scenario[F, Unit] =
     for {
-      chat          <- Scenario.start(command("createWallet").chat)
-      pass          <- providePass(chat)
-      mnemonicPass  <- provideMnemonicPass(chat)
-      walletE       <- eval(service.createWallet(chat.id, pass, mnemonicPass))
-      _             <- walletE.fold(
-                         e      => msgError(e)(chat),
-                         wallet => Scenario.eval(chat.send(wallet.verboseMsg))
-                       )
+      pass         <- providePass(chat)
+      mnemonicPass <- provideMnemonicPass(chat)
+      walletE      <- eval(service.createWallet(chat.id, pass, mnemonicPass))
+      _            <- walletE.fold(
+                        e      => msgError(e)(chat),
+                        wallet => Scenario.eval(chat.send(wallet.verboseMsg))
+                      )
     } yield ()
 
   /** Create new transaction and submit it to the network.
@@ -105,9 +131,9 @@ object scenarios {
     for {
       _ <- Scenario.eval(
             chat.send(
-              "Specify as many payments as you want in the following format: " +
-              "[address_1]:[amount_nano_ergs], [address_2]:[amount_nano_ergs], ..." +
-              "Example:\n9hR8SC8GcPfse8vScLZ6fNkn8JtaQZgnKziqoQ3H5SPCPtY5JgC:1000000000"
+              "Specify as many payments as you want in the following format:\n" +
+              "`[address_1]:[amount_nano_ergs], [address_2]:[amount_nano_ergs], ...`\n" +
+              "*Example:*\n`9hR8SC8GcPfse8vScLZ6fNkn8JtaQZgnKziqoQ3H5SPCPtY5JgC:1000000000`"
             )
           )
       in <- Scenario.next(text)
@@ -130,7 +156,7 @@ object scenarios {
     for {
       _ <- Scenario.eval(
              chat.send(
-               s"Specify fee amount. Minimum is $minFeeAmount nanoErg."
+               s"Specify fee amount. Minimum is `$minFeeAmount` nanoErg."
              )
            )
       in <- Scenario.next(text)
@@ -165,9 +191,9 @@ object scenarios {
     for {
       _ <- Scenario.eval(
             chat.send(
-              "Enter your password to confirm the following payments: " + requests
+              "Enter your password to *confirm* the following payments:\n`" + requests
                 .map(_.toString)
-                .mkString(",\n")
+                .mkString(",\n") + "`"
             )
           )
       pass <- enterTextSecure(chat)
@@ -180,7 +206,7 @@ object scenarios {
              case Right(id) =>
                Scenario.eval(
                  chat.send(
-                   s"Your transaction was submitted to the network.\nId: $id"
+                   s"Your transaction was submitted to the network.\nId: `$id`"
                  )
                )
            }
@@ -194,7 +220,7 @@ object scenarios {
     for {
       _ <- Scenario.eval(
             chat.send(
-              "Enter a password for your mnemonic phrase." +
+              "Enter a password for your mnemonic phrase.\n" +
               "Or type 'skip' if you don't have one."
             )
           )
@@ -215,7 +241,7 @@ object scenarios {
     for {
       _ <- Scenario.eval(
              chat.send(
-               s"Enter a password to protect your wallet. $willBeDeleted"
+               s"Enter a password to protect your wallet.\n$willBeDeleted"
              )
            )
       pass      <- enterTextSecure(chat)
@@ -237,8 +263,8 @@ object scenarios {
     Scenario
       .eval(
         chat.send(
-          "Enter a password to protect your mnemonic phrase. " +
-          "(optional) type 'skip' to skip this step."
+          "Enter a password to protect your mnemonic phrase.\n" +
+          "_(optional) type 'skip' to skip this step._"
         )
       )
       .flatMap { _ =>

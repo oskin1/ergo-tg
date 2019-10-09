@@ -85,16 +85,6 @@ class WalletServiceSpec
     ws.exists(chatId).unsafeRunSync() shouldBe true
   }
 
-  property("fail when restored twice") {
-    val ws = makeWalletService
-
-    ws.restoreWallet(chatId, mnemonic, pass).unsafeRunSync()
-
-    Try {
-      ws.restoreWallet(chatId, mnemonic, pass).unsafeRunSync()
-    } shouldBe 'failure
-  }
-
   property("create wallet") {
     val ws = makeWalletService
 
@@ -107,15 +97,5 @@ class WalletServiceSpec
 
     ws.createWallet(chatId, pass, Some(mnemonicPass)).unsafeRunSync()
     ws.exists(chatId).unsafeRunSync() shouldBe true
-  }
-
-  property("fail when created twice") {
-    val ws = makeWalletService
-
-    ws.createWallet(chatId, pass).unsafeRunSync()
-
-    Try {
-      ws.createWallet(chatId, pass).unsafeRunSync()
-    } shouldBe 'failure
   }
 }

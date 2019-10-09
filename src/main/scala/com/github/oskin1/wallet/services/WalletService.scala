@@ -77,36 +77,27 @@ object WalletService {
       mnemonic: String,
       pass: String,
       mnemonicPassOpt: Option[String],
-    ): F[RestoredWallet] =
-      exists(chatId).flatMap {
-        case false =>
-          val wallet =
-            Wallet.rootWallet(mnemonic, pass, mnemonicPassOpt)(settings)
-          walletRepo.putWallet(chatId, wallet) *> Sync[F].delay(
-            RestoredWallet(wallet.accounts.head.rawAddress)
-          )
-        case true =>
-          MonadError[F, Throwable].raiseError(WalletAlreadyExists)
-      }
+    ): F[RestoredWallet] = {
+      val wallet =
+        Wallet.rootWallet(mnemonic, pass, mnemonicPassOpt)(settings)
+      walletRepo.putWallet(chatId, wallet) *> Sync[F].delay(
+        RestoredWallet(wallet.accounts.head.rawAddress)
+      )
+    }
 
     def createWallet(
       chatId: Long,
       pass: String,
       mnemonicPassOpt: Option[String]
     ): F[NewWallet] =
-      exists(chatId).flatMap {
-        case false =>
-          generateMnemonic(settings)
-            .flatMap { mnemonic =>
-              val wallet =
-                Wallet.rootWallet(mnemonic, pass, mnemonicPassOpt)(settings)
-              walletRepo.putWallet(chatId, wallet) *> Sync[F].delay(
-                NewWallet(wallet.accounts.head.rawAddress, mnemonic)
-              )
-            }
-        case true =>
-          MonadError[F, Throwable].raiseError(WalletAlreadyExists)
-      }
+      generateMnemonic(settings)
+        .flatMap { mnemonic =>
+          val wallet =
+            Wallet.rootWallet(mnemonic, pass, mnemonicPassOpt)(settings)
+          walletRepo.putWallet(chatId, wallet) *> Sync[F].delay(
+            NewWallet(wallet.accounts.head.rawAddress, mnemonic)
+          )
+        }
 
     def createTransaction(
       chatId: Long,
@@ -140,7 +131,7 @@ object WalletService {
                         changeAddr =>
                           makeTransaction(inputs, requests, fee, info.height, changeAddr)
                             .flatMap(explorerService.submitTransaction)
-                            .flatMap(addToUtxPool(_, chatId))
+                            .flatMap(id => addToUtxPool(id, chatId).map(_ => id))
                       )
                   }
                 }
@@ -164,9 +155,7 @@ object WalletService {
       walletRepo.readWallet(chatId).map(_.isDefined)
 
     private def addToUtxPool(id: ModifierId, chatId: Long): F[Unit] =
-      utxPoolRef
-        .update(_ add (id -> chatId))
-        .map(_ => id)
+      utxPoolRef.update(_ add (id -> chatId))
   }
 
   object Live {
