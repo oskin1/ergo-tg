@@ -4,23 +4,13 @@ import cats.MonadError
 import cats.effect.concurrent.Ref
 import cats.effect.{Async, Sync}
 import cats.implicits._
-import com.github.oskin1.wallet.WalletError.{
-  WalletAlreadyExists,
-  WalletNotFound
-}
+import com.github.oskin1.wallet.WalletError.{WalletAlreadyExists, WalletNotFound}
 import com.github.oskin1.wallet.models.network.Balance
 import com.github.oskin1.wallet.models.storage.Wallet
-import com.github.oskin1.wallet.models.{
-  NewWallet,
-  PaymentRequest,
-  RestoredWallet
-}
-import com.github.oskin1.wallet.modules.{
-  SecretManagement,
-  TransactionManagement
-}
+import com.github.oskin1.wallet.models.{NewWallet, PaymentRequest, RestoredWallet}
+import com.github.oskin1.wallet.modules.{SecretManagement, TransactionManagement}
 import com.github.oskin1.wallet.persistence.{LDBStorage, UtxPool}
-import com.github.oskin1.wallet.repositories
+import com.github.oskin1.wallet.{ModifierId, repositories}
 import com.github.oskin1.wallet.repositories.WalletRepo
 import com.github.oskin1.wallet.settings.Settings
 import org.ergoplatform._
@@ -150,11 +140,7 @@ object WalletService {
                         changeAddr =>
                           makeTransaction(inputs, requests, fee, info.height, changeAddr)
                             .flatMap(explorerService.submitTransaction)
-                            .flatMap { id =>
-                              utxPoolRef
-                                .update(_ add (id -> chatId))
-                                .map(_ => id)
-                          }
+                            .flatMap(addToUtxPool(_, chatId))
                       )
                   }
                 }
@@ -176,6 +162,11 @@ object WalletService {
 
     def exists(chatId: Long): F[Boolean] =
       walletRepo.readWallet(chatId).map(_.isDefined)
+
+    private def addToUtxPool(id: ModifierId, chatId: Long): F[Unit] =
+      utxPoolRef
+        .update(_ add (id -> chatId))
+        .map(_ => id)
   }
 
   object Live {

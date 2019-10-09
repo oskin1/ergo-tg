@@ -1,14 +1,14 @@
 package com.github.oskin1.wallet
 
 import canoe.api._
-import canoe.syntax._
 import canoe.models.PrivateChat
 import canoe.models.messages.TelegramMessage
-import cats.effect.Timer
+import canoe.syntax._
+import cats.effect.{Sync, Timer}
 import cats.effect.concurrent.Ref
 import cats.implicits._
-import cats.Monad
 import com.github.oskin1.wallet.models.network.Transaction
+import com.github.oskin1.wallet.modules.Logging
 import com.github.oskin1.wallet.persistence.UtxPool
 import com.github.oskin1.wallet.services.ExplorerService
 import com.github.oskin1.wallet.settings.Settings
@@ -17,11 +17,11 @@ import fs2._
 /** Tracks unconfirmed transactions in the network
   * until they get into the blockchain.
   */
-final class TransactionTracker[F[_]: TelegramClient: Timer: Monad](
+final class TransactionTracker[F[_]: TelegramClient: Timer: Sync](
   txPoolRef: Ref[F, UtxPool],
   explorerService: ExplorerService[F],
   settings: Settings
-) {
+) extends Logging {
 
   /** Poll network explorer in order to find confirmed transactions
     * from UTX pool and notify users who sent them.
@@ -36,6 +36,7 @@ final class TransactionTracker[F[_]: TelegramClient: Timer: Monad](
             _.map { case (tx, chatId) => notify(chatId, tx) }.sequence
           }
           .map(_ => ())
+          .handleErrorWith(e => Sync[F].delay(log.error(e)))
       }
 
   /** Notify wallet holder associated with a given `chatId`
@@ -57,9 +58,12 @@ final class TransactionTracker[F[_]: TelegramClient: Timer: Monad](
       pool        <- txPoolRef.get
       networkInfo <- explorerService.getBlockchainInfo
       lastHeight   = pool.heightOpt.getOrElse(networkInfo.height)
-      newTxs      <- explorerService.getTransactionsSince(lastHeight)
+      newTxs      <- explorerService.getTransactionsSince(
+                       lastHeight - settings.minConfirmationsNum
+                     )
       confirmed    = findConfirmedTxs(newTxs, pool)
       confirmedIds = confirmed.map(_._1.id)
+      _           <- Sync[F].delay(log.info(s"${confirmed.size} txs confirmed."))
       _           <- txPoolRef.update(
                        _
                          .filterNot(confirmedIds.contains)
