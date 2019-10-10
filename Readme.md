@@ -8,6 +8,7 @@ Any operations requiring private key access must be authorized by user entering 
 ##### Currently implemented features:
  - `/restore_wallet` - Restore wallet from mnemonic phrase
  - `/create_wallet` - Create new wallet
+ - `/delete_wallet` - Delete wallet
  - `/balance` - Get balance
  - `/payment` - Send transaction
  - `/cancel` - Cancel current scenario
