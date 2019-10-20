@@ -1,4 +1,4 @@
-# Ergo Telegram Wallet
+# Ergo Telegram Wallet [![Build Status](https://travis-ci.org/oskin1/ergo-tg.svg?branch=master)](https://travis-ci.org/oskin1/ergo-tg)
 
 Ergo Telegram Wallet gives user an opportunity to use Ergo wallet from Telegram chat.
 As soon as Telegram doesn't allow to execute third party code on the client side Ergo Telegram Wallet
