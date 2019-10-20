@@ -49,7 +49,7 @@ object scenarios {
       mnemonic     <- enterTextSecure(chat)
       pass         <- providePass(chat)
       mnemonicPass <- enterMnemonicPass(chat)
-      walletE      <- eval(service.restoreWallet(chat.id, mnemonic, pass, mnemonicPass))
+      walletE      <- evalAttempt(service.restoreWallet(chat.id, mnemonic, pass, mnemonicPass))
       _            <- walletE.fold(
                         e      => msgError(e)(chat),
                         wallet => Scenario.eval(chat.send(wallet.verboseMsg))
@@ -79,7 +79,7 @@ object scenarios {
     for {
       pass         <- providePass(chat)
       mnemonicPass <- provideMnemonicPass(chat)
-      walletE      <- eval(service.createWallet(chat.id, pass, mnemonicPass))
+      walletE      <- evalAttempt(service.createWallet(chat.id, pass, mnemonicPass))
       _            <- walletE.fold(
                         e      => msgError(e)(chat),
                         wallet => Scenario.eval(chat.send(wallet.verboseMsg))
@@ -97,7 +97,7 @@ object scenarios {
       chat    <- Scenario.start(command("delete_wallet").chat)
       _       <- Scenario.eval(chat.send("Enter your password to *confirm* wallet deletion"))
       pass    <- enterTextSecure(chat)
-      resultE <- eval(service.deleteWallet(chat.id, pass))
+      resultE <- evalAttempt(service.deleteWallet(chat.id, pass))
       _       <- resultE.fold(
                    e => msgError(e)(chat),
                    _ => Scenario.eval(chat.send("Your wallet was deleted"))
@@ -133,7 +133,7 @@ object scenarios {
   ): Scenario[F, Unit] =
     for {
       chat       <- Scenario.start(command("balance").chat)
-      balanceE   <- eval(service.getBalance(chat.id))
+      balanceE   <- evalAttempt(service.getBalance(chat.id))
       _          <- balanceE.fold(
                       e       => msgError(e)(chat),
                       balance => Scenario.eval(chat.send(balance.verboseMsg))
@@ -215,7 +215,7 @@ object scenarios {
             )
           )
       pass <- enterTextSecure(chat)
-      idE  <- eval(service.createTransaction(chat.id, pass, requests, fee))
+      idE  <- evalAttempt(service.createTransaction(chat.id, pass, requests, fee))
       _ <- idE match {
              case Left(e: AuthError) =>
                Scenario.eval(chat.send(s"$e. Try again.")) >> completeTx(chat, requests, fee)
@@ -313,10 +313,10 @@ object scenarios {
       _       <- Scenario.eval(message.delete)
     } yield message.text
 
-  private def eval[F[_], A](fa: F[A])(
+  private def evalAttempt[F[_], A](fa: F[A])(
     implicit F: ApplicativeError[F, Throwable]
   ): Scenario[F, Either[Throwable, A]] =
-    Scenario.eval(fa.map[Either[Throwable, A]](Right(_)).handleError(Left(_)))
+    Scenario.eval(fa).attempt
 
   private def msgError[F[_]: TelegramClient](
     e: Throwable

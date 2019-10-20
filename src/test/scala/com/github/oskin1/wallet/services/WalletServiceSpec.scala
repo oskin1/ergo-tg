@@ -7,14 +7,13 @@ import com.github.oskin1.wallet.{repositories, services}
 import com.github.oskin1.wallet.repositories.WalletRepo
 import com.github.oskin1.wallet.settings.Settings
 import org.ergoplatform.wallet.settings.EncryptionSettings
-import org.scalatest.Matchers
-import org.scalatest.propspec.AnyPropSpec
+import org.scalatest.{Matchers, PropSpec}
 
 import scala.concurrent.duration._
 import scala.util.Try
 
 class WalletServiceSpec
-  extends AnyPropSpec
+  extends PropSpec
   with Matchers
   with TestStorage
   with ExplorerServiceStub[IO] {

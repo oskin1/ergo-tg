@@ -2,20 +2,14 @@ package com.github.oskin1.wallet.services
 
 import cats.effect.Sync
 import com.github.oskin1.wallet.RawAddress
-import com.github.oskin1.wallet.models.network.{
-  Balance,
-  BlockchainInfo,
-  Box,
-  Transaction
-}
+import com.github.oskin1.wallet.models.network.{Balance, BlockchainInfo, Box, Transaction}
 import com.github.oskin1.wallet.serialization.JsonCodecs
 import com.github.oskin1.wallet.settings.Settings
-import io.circe.{Decoder, Printer}
+import io.circe.Decoder
 import org.ergoplatform.ErgoLikeTransaction
 import org.http4s.circe.{jsonEncoderOf, jsonOf}
 import org.http4s.client.Client
-import org.http4s.headers.`Content-Type`
-import org.http4s.{MediaType, Method, Request, Uri}
+import org.http4s.{Method, Request, Uri}
 
 /** Provides access to the Ergo network explorer.
   */
