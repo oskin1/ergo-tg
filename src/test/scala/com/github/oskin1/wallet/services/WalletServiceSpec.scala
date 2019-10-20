@@ -22,6 +22,7 @@ class WalletServiceSpec
     Settings(
       "",
       "",
+      "",
       "mainnet",
       0,
       1.second,
