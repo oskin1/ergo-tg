@@ -1,11 +1,11 @@
 package com.github.oskin1.wallet
 
 import canoe.api._
-import canoe.models.PrivateChat
-import canoe.models.messages.TelegramMessage
-import canoe.syntax._
-import cats.effect.{Sync, Timer}
+import canoe.models.messages.TextMessage
+import canoe.models.outgoing.TextContent
+import canoe.models.{ParseMode, PrivateChat}
 import cats.effect.concurrent.Ref
+import cats.effect.{Sync, Timer}
 import cats.implicits._
 import com.github.oskin1.wallet.models.network.Transaction
 import com.github.oskin1.wallet.modules.Logging
@@ -42,12 +42,15 @@ final class TransactionTracker[F[_]: TelegramClient: Timer: Sync](
   /** Notify wallet holder associated with a given `chatId`
     * of `tx` confirmation.
     */
-  private def notify(chatId: Long, tx: Transaction): F[TelegramMessage] =
+  private def notify(chatId: Long, tx: Transaction): F[TextMessage] =
     PrivateChat(chatId, None, None, None)
-      .send(
-        s"Your transaction was confirmed.\n" +
-        s"Id: ${tx.id}\nBlockId: ${tx.blockId}\n" +
-        s"NumConfirmations: ${tx.confirmationsNum}"
+      .send[F, TextMessage](
+        TextContent(
+          s"Your transaction was confirmed.\n" +
+          s"Id: `${tx.id}`\nBlockId: `${tx.blockId}`\n" +
+          s"NumConfirmations: `${tx.confirmationsNum}`",
+          Some(ParseMode.Markdown)
+        )
       )
 
   /** Fetch new transactions appeared in the network recently

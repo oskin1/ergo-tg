@@ -7,10 +7,9 @@ import com.github.oskin1.wallet.persistence.TestStorage
 import com.github.oskin1.wallet.repositories
 import org.ergoplatform.wallet.secrets.{DerivationPath, EncryptedSecret}
 import org.ergoplatform.wallet.settings.EncryptionSettings
-import org.scalatest.Matchers
-import org.scalatest.propspec.AnyPropSpec
+import org.scalatest.{Matchers, PropSpec}
 
-class WalletRepoSpec extends AnyPropSpec with Matchers with TestStorage {
+class WalletRepoSpec extends PropSpec with Matchers with TestStorage {
 
   val chatId = 1L
 

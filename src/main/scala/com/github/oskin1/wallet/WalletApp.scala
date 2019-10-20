@@ -5,6 +5,7 @@ import canoe.models.Update
 import canoe.syntax._
 import cats.effect.Timer
 import cats.effect.concurrent.Ref
+import com.github.oskin1.wallet.modules.Logging
 import com.github.oskin1.wallet.services.WalletService
 import com.github.oskin1.wallet.settings.Settings
 import com.github.oskin1.wallet.persistence.{DataBase, UtxPool}
@@ -20,14 +21,14 @@ import zio.interop.catz._
 
 import scala.concurrent.ExecutionContext.global
 
-object WalletApp extends CatsApp with DataBase {
+object WalletApp extends CatsApp with DataBase with Logging {
 
   import scenarios._
 
   implicit val taskTimer: Timer[Task] = implicits.ioTimer[Throwable]
 
   def run(args: List[String]): ZIO[WalletApp.Environment, Nothing, Int] =
-    program.compile.drain.fold(e => {println(e); 1}, _ => 0)
+    program.compile.drain.fold(e => {log.error(e.getMessage); 1}, _ => 0)
 
   private def program: Stream[Task, Update] =
     makeEnv.flatMap {
@@ -54,7 +55,7 @@ object WalletApp extends CatsApp with DataBase {
       deleteWallet,
       createTransaction,
       getBalance
-    ).map(_.cancelWhen(command("cancel")))
+    ).map(_.cancelOn(command("cancel")))
 
   private def makeEnv =
     for {

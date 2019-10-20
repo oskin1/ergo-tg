@@ -1,15 +1,11 @@
 package com.github.oskin1.wallet.persistence
 
 import cats.implicits._
-import org.scalatest.Matchers
-import org.scalatest.prop.PropertyChecks
-import org.scalatest.propspec.AnyPropSpec
-import zio.interop.catz._
+import org.scalatest.{Matchers, PropSpec}
 
 class LDBStorageSpec
-  extends AnyPropSpec
+  extends PropSpec
     with Matchers
-    with PropertyChecks
     with StorageSpec {
 
   property("put/get/delete") {

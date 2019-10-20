@@ -2,10 +2,9 @@ package com.github.oskin1.wallet
 
 import com.github.oskin1.wallet.models.PaymentRequest
 import org.ergoplatform.ErgoAddressEncoder
-import org.scalatest.Matchers
-import org.scalatest.propspec.AnyPropSpec
+import org.scalatest.{Matchers, PropSpec}
 
-class UserInputParserSpec extends AnyPropSpec with Matchers {
+class UserInputParserSpec extends PropSpec with Matchers {
 
   implicit private val encoder: ErgoAddressEncoder = ErgoAddressEncoder(
     ErgoAddressEncoder.TestnetNetworkPrefix
