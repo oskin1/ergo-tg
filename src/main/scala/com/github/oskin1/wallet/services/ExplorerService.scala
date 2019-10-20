@@ -43,25 +43,25 @@ object ExplorerService {
 
     def getTransactionsSince(height: Int): F[List[Transaction]] =
       client.expect[List[Transaction]](
-        makeGetRequest(s"${settings.explorerUrl}/transactions/since/$height")
+        makeGetRequest(s"${settings.explorerApiUrl}/transactions/since/$height")
       )(jsonOf(Sync[F], implicitly[Decoder[List[Transaction]]]))
 
     def getBalance(address: String): F[Balance] =
       client.expect[Balance](
-        makeGetRequest(s"${settings.explorerUrl}/addresses/$address")
+        makeGetRequest(s"${settings.explorerApiUrl}/addresses/$address")
       )(jsonOf(Sync[F], implicitly[Decoder[Balance]]))
 
     def getUnspentOutputs(address: RawAddress): F[List[Box]] =
       client.expect[List[Box]](
         makeGetRequest(
-          s"${settings.explorerUrl}/transactions/boxes/byAddress/unspent/$address"
+          s"${settings.explorerApiUrl}/transactions/boxes/byAddress/unspent/$address"
         )
       )(jsonOf(Sync[F], implicitly[Decoder[List[Box]]]))
 
     def getBlockchainInfo: F[BlockchainInfo] =
       client.expect[BlockchainInfo](
         makeGetRequest(
-          s"${settings.explorerUrl}/blocks?offset=0&limit=1&sortDirection=DESC"
+          s"${settings.explorerApiUrl}/blocks?offset=0&limit=1&sortDirection=DESC"
         )
       )(jsonOf(Sync[F], implicitly[Decoder[BlockchainInfo]]))
 
@@ -69,7 +69,7 @@ object ExplorerService {
       client.expect[String](
         Request[F](
           Method.POST,
-          Uri.unsafeFromString(s"${settings.explorerUrl}/transactions")
+          Uri.unsafeFromString(s"${settings.explorerApiUrl}/transactions")
         ).withEntity(tx)(
           jsonEncoderOf(Sync[F], JsonCodecs.ergoLikeTransactionEncoder)
         )

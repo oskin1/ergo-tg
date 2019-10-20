@@ -7,6 +7,7 @@ import scala.concurrent.duration.FiniteDuration
 
 final case class Settings(
   storagePath: String,
+  explorerApiUrl: String,
   explorerUrl: String,
   networkType: String,
   minConfirmationsNum: Int,

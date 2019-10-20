@@ -47,7 +47,8 @@ final class TransactionTracker[F[_]: TelegramClient: Timer: Sync](
       .send[F, TextMessage](
         TextContent(
           s"Your transaction was confirmed.\n" +
-          s"Id: `${tx.id}`\nBlockId: `${tx.blockId}`\n" +
+          s"Id: [${tx.id}](${settings.explorerUrl}/transactions/${tx.id})\n" +
+          s"BlockId: [${tx.blockId}](${settings.explorerUrl}/blocks/${tx.blockId})\n" +
           s"NumConfirmations: `${tx.confirmationsNum}`",
           Some(ParseMode.Markdown)
         )
