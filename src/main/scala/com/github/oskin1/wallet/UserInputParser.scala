@@ -24,11 +24,10 @@ object UserInputParser {
         .sequence
         .fold[Either[String, List[PaymentRequest]]](
           _ => Left("ErgoAddress decoding failure"),
-          r =>
-            r.map {
-              case (addr, amt) =>
-                parseErgAmount(amt).map(PaymentRequest(addr, _))
-            }.sequence
+          _.map {
+            case (addr, amt) =>
+              parseErgAmount(amt).map(PaymentRequest(addr, _))
+          }.sequence
         )
     }
 
