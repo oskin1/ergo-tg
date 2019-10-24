@@ -13,7 +13,7 @@ final case class Balance(confirmedBalance: Long, totalBalance: Long) {
 
   def verboseMsg: String =
     s"Confirmed balance is:\n`${confirmedBalance.toDouble / CoinsInOneErg}` ERG\n" +
-    s"Total balance is (incl. unconfirmed txs):\n`${totalBalance.toDouble / CoinsInOneErg}` ERG."
+    s"Total balance is (incl. unconfirmed txs):\n`${totalBalance.toDouble / CoinsInOneErg}` ERG"
 }
 
 object Balance {
