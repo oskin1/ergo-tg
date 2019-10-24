@@ -11,13 +11,12 @@ import com.github.oskin1.wallet.WalletError.AuthError
 import com.github.oskin1.wallet.models.PaymentRequest
 import com.github.oskin1.wallet.services.WalletService
 import org.ergoplatform.ErgoAddressEncoder
+import constants.MinFeeAmountErg
 
 object scenarios {
 
   private val willBeDeleted: String =
     "_(the message will be deleted as you send it)_"
-
-  private val minFeeAmount: Long = 1000000L
 
   private implicit def textContent(text: String): TextContent =
     TextContent(text, Some(ParseMode.Markdown))
@@ -150,8 +149,8 @@ object scenarios {
       _ <- Scenario.eval(
             chat.send(
               "Specify as many payments as you want in the following format:\n" +
-              "`[address_1]:[amount_nano_ergs], [address_2]:[amount_nano_ergs], ...`\n" +
-              "*Example:*\n`9hR8SC8GcPfse8vScLZ6fNkn8JtaQZgnKziqoQ3H5SPCPtY5JgC:1000000000`"
+              "`[address_1]:[amount_erg], [address_2]:[amount_erg], ...`\n" +
+              "*Example:*\n`9hR8SC8GcPfse8vScLZ6fNkn8JtaQZgnKziqoQ3H5SPCPtY5JgC:0.01`"
             )
           )
       in <- Scenario.next(text)
@@ -174,19 +173,19 @@ object scenarios {
     for {
       _ <- Scenario.eval(
              chat.send(
-               s"Specify fee amount. Minimum is `$minFeeAmount` nanoErg."
+               s"Specify fee amount. Minimum is `$MinFeeAmountErg` ERG."
              )
            )
       in <- Scenario.next(text)
       fee <- UserInputParser
-              .parsePosLong(in)
+              .parseErgAmount(in)
               .fold(
                 e =>
                   Scenario.eval(
                     chat.send(s"Wrong input format: $e")
                   ) >> provideFee(chat),
                 r =>
-                  if (r >= minFeeAmount) Scenario.pure[F, Long](r)
+                  if (r >= MinFeeAmountErg) Scenario.pure[F, Long](r)
                   else
                     Scenario.eval(
                       chat.send(s"Fee amount is too small. Try again.")

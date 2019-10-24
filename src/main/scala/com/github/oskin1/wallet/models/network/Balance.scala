@@ -1,5 +1,6 @@
 package com.github.oskin1.wallet.models.network
 
+import com.github.oskin1.wallet.constants.CoinsInOneErg
 import io.circe.Decoder
 
 final case class Balance(confirmedBalance: Long, totalBalance: Long) {
@@ -11,8 +12,8 @@ final case class Balance(confirmedBalance: Long, totalBalance: Long) {
     )
 
   def verboseMsg: String =
-    s"Confirmed balance is:\n`$confirmedBalance` nanoErg\n" +
-    s"Total balance is (incl. unconfirmed txs):\n`$totalBalance` nanoErg."
+    s"Confirmed balance is:\n`${confirmedBalance.toDouble / CoinsInOneErg}` ERG\n" +
+    s"Total balance is (incl. unconfirmed txs):\n`${totalBalance.toDouble / CoinsInOneErg}` ERG"
 }
 
 object Balance {

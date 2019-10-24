@@ -14,25 +14,57 @@ class UserInputParserSpec extends PropSpec with Matchers {
     .fromString("3WycCMYP9kXAfUQ3TYXU26Vg8UNvoJSY5cc8WaZrswh6sQuMJ8Vv")
     .get
 
-  private val testCases = Seq(
-    (s"${address.toString}: 10000", List(PaymentRequest(address, 10000L))),
+  private val (ergAmtStr, nanoErgAmt) = (99, 99 * constants.CoinsInOneErg)
+
+  private val inputsParserTestCases = Seq(
+    (s"${address.toString}: $ergAmtStr", List(PaymentRequest(address, nanoErgAmt))),
     (
-      s"${address.toString}: 1234522, ${address.toString}: 99999, ",
-      List(PaymentRequest(address, 1234522L), PaymentRequest(address, 99999L))
+      s"${address.toString}: $ergAmtStr, ${address.toString}: $ergAmtStr, ",
+      List(PaymentRequest(address, nanoErgAmt), PaymentRequest(address, nanoErgAmt))
     ),
     (
-      s"${address.toString}:1234522 , ${address.toString}: 99999, ${address.toString}: 19839242",
+      s"${address.toString}:$ergAmtStr , ${address.toString}: $ergAmtStr, ${address.toString}: $ergAmtStr",
       List(
-        PaymentRequest(address, 1234522L),
-        PaymentRequest(address, 99999L),
-        PaymentRequest(address, 19839242L)
+        PaymentRequest(address, nanoErgAmt),
+        PaymentRequest(address, nanoErgAmt),
+        PaymentRequest(address, nanoErgAmt)
       )
     )
   )
 
-  property("parse user input") {
-    testCases.foreach { case (raw, expected) =>
-      UserInputParser.parsePaymentRequests(raw) shouldBe Right(expected)
+  private val ergParserValidTestCases = Seq(
+    ".2"        -> .2d,
+    ".01"       -> .01d,
+    "12.2"      -> 12.2d,
+    "123.98763" -> 123.98763d,
+    "123"       -> 123d
+  ).map(x => x._1 -> x._2 * constants.CoinsInOneErg)
+
+  private val ergParserInvalidTestCases = Seq(
+    "0.0000000001"                        -> "Max ERG decimal places overflow",
+    "99999999999999999999999999999999"    -> "Max ERG amount overflow",
+    "12.22222222222222222222222222222222" -> "Max ERG decimal places overflow",
+    ".000"                                -> "0 is not a valid ERG amount"
+  )
+
+  property("parse inputs") {
+    inputsParserTestCases.foreach {
+      case (raw, expected) =>
+        UserInputParser.parsePaymentRequests(raw) shouldBe Right(expected)
+    }
+  }
+
+  property("parse valid ERG amount") {
+    ergParserValidTestCases.foreach {
+      case (raw, expected) =>
+        UserInputParser.parseErgAmount(raw) shouldBe Right(expected)
+    }
+  }
+
+  property("parse invalid ERG amount") {
+    ergParserInvalidTestCases.foreach {
+      case (raw, expectedMsg) =>
+        UserInputParser.parseErgAmount(raw) shouldBe Left(expectedMsg)
     }
   }
 }
